@@ -97,6 +97,18 @@
         <div id="badList" class="habit-list"></div>
       </section>
 
+
+      <section class="notes-panel panel">
+        <div class="section-header">
+          <div>
+            <p class="kicker">DAILY LOG</p>
+            <h2>Notes for today</h2>
+          </div>
+          <span id="noteStatus" class="note-status">Saved</span>
+        </div>
+        <textarea id="dailyNotes" maxlength="1500" placeholder="Jot down what went well, what was difficult, or anything worth remembering…"></textarea>
+      </section>
+
       <section class="analytics-panel panel">
         <div class="section-header analytics-header">
           <div>
@@ -233,6 +245,7 @@
     <button id="signOutBtn" class="secondary-action wide">Sign out</button>
     <div class="divider"></div>
     <p class="kicker">MANAGE HABITS</p>
+<p class="settings-help">Habits stay saved permanently. Use the power button beside a habit on the dashboard to decide whether it counts today.</p>
     <div id="manageList"></div>
   </dialog>
 
