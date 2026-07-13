@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>Habit Quest</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">YOUR DAILY SCORE</p>
+        <h1>Habit Quest</h1>
+      </div>
+      <button id="settingsBtn" class="icon-btn" aria-label="Manage habits">⚙️</button>
+    </header>
+
+    <section class="score-card">
+      <div>
+        <span id="todayLabel">Today</span>
+        <strong id="todayScore">0</strong>
+        <small>points</small>
+      </div>
+      <div class="streak">
+        <span>🔥</span>
+        <div><strong id="streakCount">0</strong><small>day streak</small></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">BUILD YOUR DAY</p>
+          <h2>Good habits</h2>
+        </div>
+        <button class="small-add" data-type="good">+ Add</button>
+      </div>
+      <div id="goodList" class="habit-list"></div>
+    </section>
+
+    <section>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">KEEP IT HONEST</p>
+          <h2>Bad habits</h2>
+        </div>
+        <button class="small-add danger-text" data-type="bad">+ Add</button>
+      </div>
+      <div id="badList" class="habit-list"></div>
+    </section>
+
+    <section class="history-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">LAST 7 DAYS</p>
+          <h2>Weekly score</h2>
+        </div>
+        <strong id="weekTotal">0 pts</strong>
+      </div>
+      <div id="weekChart" class="week-chart"></div>
+    </section>
+
+    <button id="resetTodayBtn" class="ghost-btn">Reset today</button>
+  </main>
+
+  <dialog id="habitDialog">
+    <form method="dialog" id="habitForm">
+      <div class="dialog-head">
+        <h2 id="dialogTitle">Add habit</h2>
+        <button value="cancel" class="icon-btn" aria-label="Close">✕</button>
+      </div>
+      <input type="hidden" id="habitType" />
+      <input type="hidden" id="habitId" />
+      <label>
+        Habit name
+        <input id="habitName" maxlength="45" placeholder="Example: Morning workout" required />
+      </label>
+      <label>
+        Points
+        <input id="habitPoints" type="number" min="1" max="100" value="10" required />
+      </label>
+      <div class="dialog-actions">
+        <button type="button" id="deleteHabitBtn" class="delete-btn hidden">Delete</button>
+        <button value="cancel" class="secondary-btn">Cancel</button>
+        <button type="submit" class="primary-btn">Save habit</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="manageDialog">
+    <div class="dialog-head">
+      <div>
+        <p class="eyebrow">CUSTOMIZE</p>
+        <h2>Manage habits</h2>
+      </div>
+      <button id="closeManageBtn" class="icon-btn" aria-label="Close">✕</button>
+    </div>
+    <p class="muted">Tap a habit to edit its name or point value.</p>
+    <div id="manageList"></div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
