@@ -3,136 +3,239 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#111827" />
+  <meta name="theme-color" content="#020203" />
   <title>Habit Quest</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icon.svg" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="app-shell">
-    <header class="topbar">
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <div class="scanlines"></div>
+
+  <section id="authScreen" class="auth-screen">
+    <div class="auth-frame">
+      <div class="imperial-core">
+        <div class="core-ring"></div>
+        <div class="core-mark">HQ</div>
+      </div>
+      <p class="kicker">PERSONAL DISCIPLINE PROTOCOL</p>
+      <h1>Habit Quest</h1>
+      <p class="auth-subtitle">Track every action. Preserve the streak. Build the record.</p>
+      <button id="googleSignInBtn" class="primary-action">Continue with Google</button>
+      <p id="authStatus" class="status-copy">Secure cloud sync across iPhone, iPad, and computer.</p>
+    </div>
+  </section>
+
+  <main id="app" class="app-shell hidden">
+    <header class="command-header">
       <div>
-        <p class="eyebrow">YOUR DAILY PERFORMANCE</p>
+        <p class="kicker">COMMAND CENTER</p>
         <h1>Habit Quest</h1>
       </div>
-      <button id="settingsBtn" class="icon-btn" aria-label="Manage habits">⚙️</button>
+      <div class="header-actions">
+        <span id="syncBadge" class="sync-chip">● Synced</span>
+        <button id="settingsBtn" class="icon-button" aria-label="Settings">⚙</button>
+      </div>
     </header>
 
-    <section class="score-grid">
-      <article class="score-card grade-card">
-        <span id="todayLabel">Today</span>
-        <strong id="todayGrade">0%</strong>
-        <small>daily grade</small>
-      </article>
-      <article class="score-card points-card">
-        <span>Points</span>
-        <strong id="todayScore">0</strong>
-        <small id="pointsPossible">of 0 possible</small>
-      </article>
-      <article class="score-card streak-card">
-        <span>🔥 Streak</span>
-        <strong id="streakCount">0</strong>
-        <small>positive days</small>
-      </article>
+    <section id="dashboardView" class="view active">
+      <div class="dashboard-grid">
+        <article class="grade-reactor panel">
+          <div class="reactor-ring" id="gradeRing">
+            <div class="reactor-inner">
+              <span class="panel-label">TODAY</span>
+              <strong id="todayGrade">0%</strong>
+              <span id="letterGrade" class="letter-grade">F</span>
+            </div>
+          </div>
+          <div class="reactor-footer">
+            <span id="todayDate">Today</span>
+            <span id="gradeMessage">Stand by</span>
+          </div>
+        </article>
+
+        <article class="metric-panel panel">
+          <span class="panel-label">POINTS</span>
+          <strong id="todayScore">0</strong>
+          <small id="pointsPossible">of 0 possible</small>
+        </article>
+
+        <article class="metric-panel panel">
+          <span class="panel-label">CURRENT STREAK</span>
+          <strong id="streakCount">0</strong>
+          <small>positive days</small>
+        </article>
+
+        <article class="metric-panel panel">
+          <span class="panel-label">WEEKLY AVERAGE</span>
+          <strong id="dashboardWeeklyAvg">0%</strong>
+          <small>last 7 recorded days</small>
+        </article>
+      </div>
+
+      <section class="habits-section">
+        <div class="section-header">
+          <div>
+            <p class="kicker">MISSION OBJECTIVES</p>
+            <h2>Good habits</h2>
+          </div>
+          <button class="text-button" data-type="good">+ Add habit</button>
+        </div>
+        <div id="goodList" class="habit-list"></div>
+      </section>
+
+      <section class="habits-section">
+        <div class="section-header">
+          <div>
+            <p class="kicker">THREAT MONITOR</p>
+            <h2>Bad habits</h2>
+          </div>
+          <button class="text-button danger" data-type="bad">+ Add penalty</button>
+        </div>
+        <div id="badList" class="habit-list"></div>
+      </section>
+
+      <section class="analytics-panel panel">
+        <div class="section-header analytics-header">
+          <div>
+            <p class="kicker">PERFORMANCE HISTORY</p>
+            <h2 id="chartTitle">Weekly grade</h2>
+          </div>
+          <strong id="rangeAverage" class="average-readout">0% AVG</strong>
+        </div>
+
+        <div class="control-row">
+          <div class="segmented" id="rangeControls">
+            <button data-range="week" class="active">Week</button>
+            <button data-range="month">Month</button>
+            <button data-range="year">Year</button>
+            <button data-range="fiveYear">5 years</button>
+          </div>
+          <div class="segmented" id="chartTypeControls">
+            <button data-chart="bar" class="active">Bars</button>
+            <button data-chart="line">Line</button>
+          </div>
+        </div>
+
+        <div class="chart-stage">
+          <div class="chart-grid-lines"></div>
+          <div id="barChart" class="bar-chart"></div>
+          <canvas id="lineChart" class="line-chart hidden"></canvas>
+        </div>
+
+        <div class="grade-key">
+          <span><i class="key-a"></i>90–100</span>
+          <span><i class="key-b"></i>80–89</span>
+          <span><i class="key-c"></i>70–79</span>
+          <span><i class="key-f"></i>Below 70</span>
+        </div>
+      </section>
     </section>
 
-    <section>
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">BUILD YOUR DAY</p>
-          <h2>Good habits</h2>
-        </div>
-        <button class="small-add" data-type="good">+ Add</button>
+    <section id="statisticsView" class="view">
+      <div class="page-heading">
+        <p class="kicker">SYSTEM ANALYSIS</p>
+        <h2>Statistics</h2>
       </div>
-      <div id="goodList" class="habit-list"></div>
+
+      <div class="stats-grid">
+        <article class="stat-panel panel"><span>Weekly average</span><strong id="weeklyAvg">0%</strong></article>
+        <article class="stat-panel panel"><span>Monthly average</span><strong id="monthlyAvg">0%</strong></article>
+        <article class="stat-panel panel"><span>Yearly average</span><strong id="yearlyAvg">0%</strong></article>
+        <article class="stat-panel panel"><span>Best grade</span><strong id="bestGrade">0%</strong></article>
+        <article class="stat-panel panel"><span>Longest streak</span><strong id="longestStreak">0</strong></article>
+        <article class="stat-panel panel"><span>Total completions</span><strong id="totalCompletions">0</strong></article>
+        <article class="stat-panel panel"><span>Total good points</span><strong id="totalGoodPoints">0</strong></article>
+        <article class="stat-panel panel"><span>Total penalties</span><strong id="totalPenalties">0</strong></article>
+      </div>
+
+      <section class="panel habit-analysis">
+        <div class="section-header">
+          <div>
+            <p class="kicker">HABIT INTELLIGENCE</p>
+            <h2>Consistency report</h2>
+          </div>
+        </div>
+        <div id="habitStats" class="habit-stats"></div>
+      </section>
     </section>
 
-    <section>
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">KEEP IT HONEST</p>
-          <h2>Bad habits</h2>
-        </div>
-        <button class="small-add danger-text" data-type="bad">+ Add</button>
+    <section id="calendarView" class="view">
+      <div class="page-heading">
+        <p class="kicker">DAILY ARCHIVE</p>
+        <h2>Calendar</h2>
       </div>
-      <div id="badList" class="habit-list"></div>
+
+      <section class="panel calendar-panel">
+        <div class="calendar-nav">
+          <button id="prevMonth" class="icon-button" aria-label="Previous month">‹</button>
+          <strong id="calendarMonth">Month</strong>
+          <button id="nextMonth" class="icon-button" aria-label="Next month">›</button>
+        </div>
+        <div class="calendar-weekdays">
+          <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+      </section>
+
+      <section id="dayDetail" class="panel day-detail">
+        <p class="status-copy">Select a day to inspect its record.</p>
+      </section>
     </section>
 
-    <section class="history-section">
-      <div class="section-heading chart-heading">
-        <div>
-          <p class="eyebrow">PERFORMANCE HISTORY</p>
-          <h2 id="chartTitle">Weekly grade</h2>
-        </div>
-        <strong id="rangeAverage">0% avg</strong>
-      </div>
+    <button id="resetTodayBtn" class="reset-button">Reset today</button>
 
-      <div class="controls">
-        <div class="segmented" id="rangeControls" aria-label="Chart range">
-          <button data-range="week" class="active">Week</button>
-          <button data-range="month">Month</button>
-          <button data-range="year">Year</button>
-          <button data-range="fiveYear">5 years</button>
-        </div>
-        <div class="segmented compact" id="chartTypeControls" aria-label="Chart type">
-          <button data-chart="bar" class="active">Bars</button>
-          <button data-chart="line">Line</button>
-        </div>
-      </div>
-
-      <div class="chart-shell">
-        <div id="barChart" class="bar-chart"></div>
-        <canvas id="lineChart" class="line-chart hidden" aria-label="Grade history line graph"></canvas>
-      </div>
-
-      <div class="grade-legend">
-        <span><i class="grade-a"></i>90–100</span>
-        <span><i class="grade-b"></i>80–89</span>
-        <span><i class="grade-c"></i>70–79</span>
-        <span><i class="grade-f"></i>Below 70</span>
-      </div>
-    </section>
-
-    <button id="resetTodayBtn" class="ghost-btn">Reset today</button>
+    <nav class="bottom-nav" aria-label="Main navigation">
+      <button class="nav-button active" data-view="dashboard">
+        <span>⌂</span><small>Dashboard</small>
+      </button>
+      <button class="nav-button" data-view="statistics">
+        <span>⌁</span><small>Statistics</small>
+      </button>
+      <button class="nav-button" data-view="calendar">
+        <span>▦</span><small>Calendar</small>
+      </button>
+    </nav>
   </main>
 
   <dialog id="habitDialog">
     <form method="dialog" id="habitForm">
-      <div class="dialog-head">
-        <h2 id="dialogTitle">Add habit</h2>
-        <button value="cancel" class="icon-btn" aria-label="Close">✕</button>
+      <div class="dialog-header">
+        <div>
+          <p class="kicker">CONFIGURATION</p>
+          <h2 id="dialogTitle">Add habit</h2>
+        </div>
+        <button value="cancel" class="icon-button">✕</button>
       </div>
       <input type="hidden" id="habitType" />
       <input type="hidden" id="habitId" />
-      <label>
-        Habit name
-        <input id="habitName" maxlength="45" placeholder="Example: Morning workout" required />
-      </label>
-      <label>
-        Points
-        <input id="habitPoints" type="number" min="1" max="100" value="10" required />
-      </label>
+      <label>Habit name<input id="habitName" maxlength="45" required /></label>
+      <label>Points<input id="habitPoints" type="number" min="1" max="100" required /></label>
       <div class="dialog-actions">
-        <button type="button" id="deleteHabitBtn" class="delete-btn hidden">Delete</button>
-        <button value="cancel" class="secondary-btn">Cancel</button>
-        <button type="submit" class="primary-btn">Save habit</button>
+        <button type="button" id="deleteHabitBtn" class="delete-action hidden">Delete</button>
+        <button value="cancel" class="secondary-action">Cancel</button>
+        <button type="submit" class="primary-action compact">Save habit</button>
       </div>
     </form>
   </dialog>
 
-  <dialog id="manageDialog">
-    <div class="dialog-head">
+  <dialog id="settingsDialog">
+    <div class="dialog-header">
       <div>
-        <p class="eyebrow">CUSTOMIZE</p>
-        <h2>Manage habits</h2>
+        <p class="kicker">SYSTEM SETTINGS</p>
+        <h2>Account & habits</h2>
       </div>
-      <button id="closeManageBtn" class="icon-btn" aria-label="Close">✕</button>
+      <button id="closeSettingsBtn" class="icon-button">✕</button>
     </div>
-    <p class="muted">Tap a habit to edit its name or point value.</p>
+    <p id="signedInAs" class="status-copy"></p>
+    <button id="signOutBtn" class="secondary-action wide">Sign out</button>
+    <div class="divider"></div>
+    <p class="kicker">MANAGE HABITS</p>
     <div id="manageList"></div>
   </dialog>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

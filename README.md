@@ -1,9 +1,17 @@
-# Habit Quest v1.1
+# Habit Quest v3
 
-Upgrade includes:
-- Daily grade from 0–100%
-- Bad-habit penalties subtract from the grade
-- Color-coded grade charts
-- Week, 30-day, one-year, and five-year views
+This rebuild includes:
+- Google Sign-In
+- Firebase Firestore sync across iPhone, iPad, and computer
+- Existing local habit/history migration
+- Red-and-black command-center interface
+- Daily grade and letter grade
+- Good points and bad-habit penalties
+- Week, month, year, and five-year history
 - Bar and line chart toggle
-- Existing browser data remains stored under the same localStorage key
+- Statistics dashboard
+- Calendar archive with daily details
+- Offline local fallback
+- Bottom mobile navigation
+
+Upload all seven files into the root of the existing GitHub repository and replace the current files.
