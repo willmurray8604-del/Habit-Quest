@@ -5,7 +5,7 @@
   "display": "standalone",
   "background_color": "#020203",
   "theme_color": "#020203",
-  "description": "A synced personal habit command center.",
+  "description": "A synced habit command center with polished daily notes, flexible habits, and individual streaks.",
   "icons": [
     {
       "src": "icon.svg",

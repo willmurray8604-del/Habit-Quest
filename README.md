@@ -1,17 +1,12 @@
-# Habit Quest v3
+# Habit Quest v3.2
 
-This rebuild includes:
-- Google Sign-In
-- Firebase Firestore sync across iPhone, iPad, and computer
-- Existing local habit/history migration
-- Red-and-black command-center interface
-- Daily grade and letter grade
-- Good points and bad-habit penalties
-- Week, month, year, and five-year history
-- Bar and line chart toggle
-- Statistics dashboard
-- Calendar archive with daily details
-- Offline local fallback
-- Bottom mobile navigation
-
-Upload all seven files into the root of the existing GitHub repository and replace the current files.
+Corrected and redesigned update:
+- Polished compact Daily Log card
+- Clear COUNTING / PAUSED control on every habit
+- Paused habits remain saved but do not affect today's grade
+- Individual current streak shown cleanly on each habit
+- Best individual streak retained in Statistics
+- Good points are visibly green
+- Grade ring now genuinely changes green/yellow/orange/red
+- Calendar cells are visibly filled with the day's grade color
+- Existing Firebase data and sync remain compatible
