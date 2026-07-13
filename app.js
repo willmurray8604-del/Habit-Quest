@@ -1,5 +1,27 @@
-const STORAGE_KEY = "habitQuest.v1";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+  getRedirectResult, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyCDKbVG2J-IRNOsT7XKeRMMStaDGM1HZRc",
+  authDomain: "habit-quest-31489.firebaseapp.com",
+  projectId: "habit-quest-31489",
+  storageBucket: "habit-quest-31489.firebasestorage.app",
+  messagingSenderId: "725666329057",
+  appId: "1:725666329057:web:3150244e6265c96c0c22a0"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+const STORAGE_KEY = "habitQuest.v1";
 const defaultState = {
   habits: [
     { id: crypto.randomUUID(), name: "Workout or intentional movement", points: 20, type: "good" },
@@ -10,472 +32,237 @@ const defaultState = {
   ],
   logs: {},
   snapshots: {},
-  preferences: { range: "week", chartType: "bar" }
+  preferences: { range: "week", chartType: "bar" },
+  createdAt: Date.now()
 };
 
-let state = loadState();
-let resizeTimer;
+let state = loadLocal();
+let user = null;
+let unsub = null;
+let saveTimer = null;
+let ignoreRemote = false;
+let calendarCursor = new Date();
 
+const $ = s => document.querySelector(s);
 const els = {
-  todayScore: document.querySelector("#todayScore"),
-  todayGrade: document.querySelector("#todayGrade"),
-  pointsPossible: document.querySelector("#pointsPossible"),
-  todayLabel: document.querySelector("#todayLabel"),
-  streakCount: document.querySelector("#streakCount"),
-  goodList: document.querySelector("#goodList"),
-  badList: document.querySelector("#badList"),
-  barChart: document.querySelector("#barChart"),
-  lineChart: document.querySelector("#lineChart"),
-  chartTitle: document.querySelector("#chartTitle"),
-  rangeAverage: document.querySelector("#rangeAverage"),
-  habitDialog: document.querySelector("#habitDialog"),
-  habitForm: document.querySelector("#habitForm"),
-  habitType: document.querySelector("#habitType"),
-  habitId: document.querySelector("#habitId"),
-  habitName: document.querySelector("#habitName"),
-  habitPoints: document.querySelector("#habitPoints"),
-  dialogTitle: document.querySelector("#dialogTitle"),
-  deleteHabitBtn: document.querySelector("#deleteHabitBtn"),
-  manageDialog: document.querySelector("#manageDialog"),
-  manageList: document.querySelector("#manageList")
+  authScreen: $("#authScreen"), app: $("#app"), authStatus: $("#authStatus"),
+  todayGrade: $("#todayGrade"), letterGrade: $("#letterGrade"), gradeProgress: $("#gradeProgress"),
+  todayScore: $("#todayScore"), pointsPossible: $("#pointsPossible"), streakCount: $("#streakCount"),
+  goodList: $("#goodList"), badList: $("#badList"), barChart: $("#barChart"), lineChart: $("#lineChart"),
+  chartTitle: $("#chartTitle"), rangeAverage: $("#rangeAverage"), syncBadge: $("#syncBadge"),
+  habitDialog: $("#habitDialog"), habitForm: $("#habitForm"), habitType: $("#habitType"),
+  habitId: $("#habitId"), habitName: $("#habitName"), habitPoints: $("#habitPoints"),
+  dialogTitle: $("#dialogTitle"), deleteHabitBtn: $("#deleteHabitBtn"), manageDialog: $("#manageDialog"),
+  manageList: $("#manageList"), signedInAs: $("#signedInAs"), calendarMonth: $("#calendarMonth"),
+  calendarGrid: $("#calendarGrid"), dayDetail: $("#dayDetail")
 };
 
-function loadState() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved?.habits && saved?.logs) {
+function loadLocal(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if(saved?.habits&&saved?.logs){
       saved.snapshots ||= {};
-      saved.preferences ||= { range: "week", chartType: "bar" };
+      saved.preferences ||= {range:"week",chartType:"bar"};
       return saved;
     }
-  } catch {}
+  }catch{}
   return structuredClone(defaultState);
 }
-
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+function saveLocal(){
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
 }
-
-function dateKey(date = new Date()) {
-  return date.toLocaleDateString("en-CA");
+function dateKey(date=new Date()){return date.toLocaleDateString("en-CA")}
+function atNoon(date=new Date()){const d=new Date(date);d.setHours(12,0,0,0);return d}
+function currentPossible(){return state.habits.filter(h=>h.type==="good").reduce((s,h)=>s+h.points,0)}
+function rawScore(key){
+  const log=state.logs[key]||{};
+  return state.habits.reduce((s,h)=>log[h.id]?s+(h.type==="good"?h.points:-h.points):s,0);
 }
-
-function logFor(key = dateKey()) {
-  if (!state.logs[key]) state.logs[key] = {};
-  return state.logs[key];
-}
-
-function isDone(habitId, key = dateKey()) {
-  return Boolean(state.logs[key]?.[habitId]);
-}
-
-function currentPossiblePoints() {
-  return state.habits.filter(h => h.type === "good").reduce((sum, h) => sum + h.points, 0);
-}
-
-function rawScoreForDay(key) {
-  const log = state.logs[key] || {};
-  return state.habits.reduce((sum, h) => {
-    if (!log[h.id]) return sum;
-    return sum + (h.type === "good" ? h.points : -h.points);
-  }, 0);
-}
-
-function syncSnapshot(key = dateKey()) {
-  const possible = currentPossiblePoints();
-  const raw = rawScoreForDay(key);
-  const grade = possible > 0 ? Math.max(0, Math.min(100, Math.round((raw / possible) * 100))) : 0;
-  state.snapshots[key] = { raw, possible, grade };
-}
-
-function toggleHabit(id) {
-  const log = logFor();
-  log[id] = !log[id];
-  syncSnapshot();
-  saveState();
-  render();
-}
-
-function metricsForDay(key) {
-  if (key === dateKey()) syncSnapshot(key);
-  if (state.snapshots[key]) return state.snapshots[key];
-
-  // Backward compatibility for days recorded before this update.
-  if (state.logs[key]) {
-    const possible = currentPossiblePoints();
-    const raw = rawScoreForDay(key);
-    const grade = possible > 0 ? Math.max(0, Math.min(100, Math.round((raw / possible) * 100))) : 0;
-    return { raw, possible, grade };
+function metrics(key){
+  if(key===dateKey()) syncSnapshot(key);
+  if(state.snapshots[key]) return state.snapshots[key];
+  if(state.logs[key]){
+    const possible=currentPossible(),raw=rawScore(key);
+    return {raw,possible,grade:possible?Math.max(0,Math.min(100,Math.round(raw/possible*100))):0};
   }
-
-  return { raw: 0, possible: 0, grade: 0 };
+  return {raw:0,possible:0,grade:0};
 }
-
-function gradeClass(grade) {
-  if (grade >= 90) return "grade-a";
-  if (grade >= 80) return "grade-b";
-  if (grade >= 70) return "grade-c";
-  return "grade-f";
+function syncSnapshot(key=dateKey()){
+  const possible=currentPossible(),raw=rawScore(key);
+  state.snapshots[key]={raw,possible,grade:possible?Math.max(0,Math.min(100,Math.round(raw/possible*100))):0};
 }
-
-function gradeColor(grade) {
-  const styles = getComputedStyle(document.documentElement);
-  if (grade >= 90) return styles.getPropertyValue("--good").trim();
-  if (grade >= 80) return styles.getPropertyValue("--yellow").trim();
-  if (grade >= 70) return styles.getPropertyValue("--orange").trim();
-  return styles.getPropertyValue("--bad").trim();
+function queueSave(){
+  saveLocal();
+  els.syncBadge.textContent="● Saving";
+  els.syncBadge.style.color="#ffd60a";
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(saveCloud,350);
 }
-
-function renderHabits(type, container) {
-  const habits = state.habits.filter(h => h.type === type);
-  container.innerHTML = "";
-
-  if (!habits.length) {
-    container.innerHTML = `<div class="empty">No ${type} habits yet. Tap “Add” to create one.</div>`;
-    return;
+async function saveCloud(){
+  if(!user)return;
+  try{
+    await setDoc(doc(db,"users",user.uid,"data","state"),{
+      ...state, updatedAt:serverTimestamp()
+    });
+    els.syncBadge.textContent="● Synced";
+    els.syncBadge.style.color="#7ff29b";
+  }catch(e){
+    console.error(e);
+    els.syncBadge.textContent="● Offline";
+    els.syncBadge.style.color="#ff6b72";
   }
-
-  habits.forEach(habit => {
-    const done = isDone(habit.id);
-    const row = document.createElement("div");
-    row.className = `habit ${habit.type} ${done ? "done" : ""}`;
-    row.innerHTML = `
-      <button class="check-btn" aria-label="${done ? "Undo" : "Complete"} ${escapeHtml(habit.name)}">${done ? "✓" : ""}</button>
-      <div class="habit-copy">
-        <span class="habit-name">${escapeHtml(habit.name)}</span>
-        <div class="habit-sub">${habit.type === "good" ? "Earn points" : "Lose points"}</div>
-      </div>
-      <span class="points">${habit.type === "good" ? "+" : "−"}${habit.points}</span>
-    `;
-    row.querySelector(".check-btn").addEventListener("click", () => toggleHabit(habit.id));
+}
+async function hydrateFromCloud(){
+  if(!user)return;
+  const ref=doc(db,"users",user.uid,"data","state");
+  const snap=await getDoc(ref);
+  if(snap.exists()){
+    const cloud=snap.data();
+    delete cloud.updatedAt;
+    state=cloud;
+    saveLocal();
+  }else{
+    await setDoc(ref,{...state,updatedAt:serverTimestamp()});
+  }
+  if(unsub)unsub();
+  unsub=onSnapshot(ref,s=>{
+    if(!s.exists())return;
+    const remote=s.data(); delete remote.updatedAt;
+    if(JSON.stringify(remote)!==JSON.stringify(state)){
+      state=remote; saveLocal(); render();
+    }
+  });
+}
+function gradeClass(g){return g>=90?"grade-a":g>=80?"grade-b":g>=70?"grade-c":"grade-f"}
+function gradeColor(g){const cs=getComputedStyle(document.documentElement);return g>=90?cs.getPropertyValue("--green").trim():g>=80?cs.getPropertyValue("--yellow").trim():g>=70?cs.getPropertyValue("--orange").trim():cs.getPropertyValue("--red").trim()}
+function letter(g){return g>=90?"A":g>=80?"B":g>=70?"C":g>=60?"D":"F"}
+function logFor(key=dateKey()){state.logs[key] ||= {};return state.logs[key]}
+function isDone(id,key=dateKey()){return !!state.logs[key]?.[id]}
+function toggleHabit(id){
+  const log=logFor(); log[id]=!log[id]; syncSnapshot(); queueSave(); render();
+}
+function renderHabits(type,container){
+  const habits=state.habits.filter(h=>h.type===type); container.innerHTML="";
+  if(!habits.length){container.innerHTML=`<div class="empty">No ${type} habits yet.</div>`;return}
+  habits.forEach(h=>{
+    const done=isDone(h.id),row=document.createElement("div");
+    row.className=`habit ${h.type} ${done?"done":""}`;
+    row.innerHTML=`<button class="check-btn">${done?"✓":""}</button><div class="habit-copy"><span class="habit-name">${esc(h.name)}</span><div class="habit-sub">${h.type==="good"?"Earn points":"Lose points"}</div></div><span class="points">${h.type==="good"?"+":"−"}${h.points}</span>`;
+    row.querySelector("button").onclick=()=>toggleHabit(h.id);
     container.appendChild(row);
   });
 }
-
-function dayAtNoon(date = new Date()) {
-  const d = new Date(date);
-  d.setHours(12, 0, 0, 0);
-  return d;
-}
-
-function rangeData(range) {
-  const now = dayAtNoon();
-  const data = [];
-
-  if (range === "week") {
-    for (let i = 6; i >= 0; i--) {
-      const d = dayAtNoon(now);
-      d.setDate(d.getDate() - i);
-      data.push({
-        label: d.toLocaleDateString(undefined, { weekday: "narrow" }),
-        grade: metricsForDay(dateKey(d)).grade
-      });
+function rangeData(range){
+  const now=atNoon(),data=[];
+  if(range==="week"||range==="month"){
+    const count=range==="week"?7:30;
+    for(let i=count-1;i>=0;i--){
+      const d=atNoon(now);d.setDate(d.getDate()-i);
+      data.push({label:range==="week"?d.toLocaleDateString(undefined,{weekday:"narrow"}):String(d.getDate()),grade:metrics(dateKey(d)).grade});
     }
-    return { title: "Weekly grade", data };
+    return {title:range==="week"?"Weekly grade":"30-day grade",data};
   }
-
-  if (range === "month") {
-    for (let i = 29; i >= 0; i--) {
-      const d = dayAtNoon(now);
-      d.setDate(d.getDate() - i);
-      data.push({
-        label: d.getDate().toString(),
-        grade: metricsForDay(dateKey(d)).grade
-      });
+  const months=range==="year"?12:60;
+  for(let i=months-1;i>=0;i--){
+    const start=atNoon(now);start.setDate(1);start.setMonth(start.getMonth()-i);
+    const end=atNoon(start);end.setMonth(end.getMonth()+1);
+    const vals=[];
+    for(let d=atNoon(start);d<end&&d<=now;d.setDate(d.getDate()+1)){
+      const k=dateKey(d);if(state.logs[k]||state.snapshots[k])vals.push(metrics(k).grade);
     }
-    return { title: "30-day grade", data };
+    data.push({label:start.toLocaleDateString(undefined,{month:"short",year:range==="fiveYear"?"2-digit":undefined}),grade:vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0});
   }
-
-  if (range === "year") {
-    for (let i = 11; i >= 0; i--) {
-      const start = dayAtNoon(now);
-      start.setDate(1);
-      start.setMonth(start.getMonth() - i);
-      const end = dayAtNoon(start);
-      end.setMonth(end.getMonth() + 1);
-      const grades = [];
-      for (let d = dayAtNoon(start); d < end && d <= now; d.setDate(d.getDate() + 1)) {
-        const key = dateKey(d);
-        if (state.logs[key] || state.snapshots[key]) grades.push(metricsForDay(key).grade);
-      }
-      data.push({
-        label: start.toLocaleDateString(undefined, { month: "short" }),
-        grade: grades.length ? Math.round(grades.reduce((a,b) => a+b, 0) / grades.length) : 0
-      });
-    }
-    return { title: "One-year grade", data };
-  }
-
-  // Five-year view: one bar/point per month, up to 60 points.
-  for (let i = 59; i >= 0; i--) {
-    const start = dayAtNoon(now);
-    start.setDate(1);
-    start.setMonth(start.getMonth() - i);
-    const end = dayAtNoon(start);
-    end.setMonth(end.getMonth() + 1);
-    const grades = [];
-    for (let d = dayAtNoon(start); d < end && d <= now; d.setDate(d.getDate() + 1)) {
-      const key = dateKey(d);
-      if (state.logs[key] || state.snapshots[key]) grades.push(metricsForDay(key).grade);
-    }
-    data.push({
-      label: start.toLocaleDateString(undefined, { month: "short", year: "2-digit" }),
-      grade: grades.length ? Math.round(grades.reduce((a,b) => a+b, 0) / grades.length) : 0
-    });
-  }
-  return { title: "Five-year grade", data };
+  return {title:range==="year"?"One-year grade":"Five-year grade",data};
 }
-
-function renderBarChart(data, range) {
-  els.barChart.innerHTML = "";
-  els.barChart.style.gridTemplateColumns = `repeat(${data.length}, minmax(${range === "month" || range === "fiveYear" ? "24px" : "38px"}, 1fr))`;
-  els.barChart.style.width = data.length > 30 ? `${Math.max(100, data.length * 4)}%` : "100%";
-
-  data.forEach((item, index) => {
-    const cell = document.createElement("div");
-    cell.className = "bar-item";
-    const showLabel = range === "week" || range === "year" || 
-      (range === "month" && index % 3 === 0) ||
-      (range === "fiveYear" && index % 6 === 0);
-    cell.innerHTML = `
-      <div class="bar-wrap">
-        <div class="bar ${gradeClass(item.grade)}" style="height:${Math.max(2, item.grade)}%"></div>
-      </div>
-      <div class="bar-grade">${item.grade}%</div>
-      <div class="bar-label">${showLabel ? item.label : ""}</div>
-    `;
-    els.barChart.appendChild(cell);
-  });
+function renderHistory(){
+  const range=state.preferences.range,chart=state.preferences.chartType,{title,data}=rangeData(range);
+  els.chartTitle.textContent=title;
+  const vals=data.filter(x=>x.grade>0);els.rangeAverage.textContent=`${vals.length?Math.round(vals.reduce((a,b)=>a+b.grade,0)/vals.length):0}% avg`;
+  document.querySelectorAll("#rangeControls button").forEach(b=>b.classList.toggle("active",b.dataset.range===range));
+  document.querySelectorAll("#chartTypeControls button").forEach(b=>b.classList.toggle("active",b.dataset.chart===chart));
+  els.barChart.classList.toggle("hidden",chart!=="bar");els.lineChart.classList.toggle("hidden",chart!=="line");
+  if(chart==="bar")renderBars(data,range);else renderLine(data);
 }
-
-function renderLineChart(data) {
-  const canvas = els.lineChart;
-  const shell = canvas.parentElement;
-  const ratio = window.devicePixelRatio || 1;
-  const width = Math.max(320, shell.clientWidth);
-  const height = 260;
-  canvas.width = width * ratio;
-  canvas.height = height * ratio;
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
-
-  const ctx = canvas.getContext("2d");
-  ctx.scale(ratio, ratio);
-  ctx.clearRect(0, 0, width, height);
-
-  const pad = { left: 34, right: 18, top: 20, bottom: 34 };
-  const plotW = width - pad.left - pad.right;
-  const plotH = height - pad.top - pad.bottom;
-  const lineColor = getComputedStyle(document.documentElement).getPropertyValue("--line").trim();
-  const muted = getComputedStyle(document.documentElement).getPropertyValue("--muted").trim();
-
-  ctx.font = "11px system-ui";
-  ctx.textAlign = "right";
-  ctx.textBaseline = "middle";
-  [0, 25, 50, 75, 100].forEach(v => {
-    const y = pad.top + plotH - (v / 100) * plotH;
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(pad.left, y);
-    ctx.lineTo(width - pad.right, y);
-    ctx.stroke();
-    ctx.fillStyle = muted;
-    ctx.fillText(`${v}`, pad.left - 7, y);
-  });
-
-  if (!data.length) return;
-  const xAt = i => data.length === 1 ? pad.left + plotW / 2 : pad.left + (i / (data.length - 1)) * plotW;
-  const yAt = grade => pad.top + plotH - (grade / 100) * plotH;
-
-  for (let i = 0; i < data.length - 1; i++) {
-    ctx.strokeStyle = gradeColor(Math.round((data[i].grade + data[i+1].grade) / 2));
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(xAt(i), yAt(data[i].grade));
-    ctx.lineTo(xAt(i+1), yAt(data[i+1].grade));
-    ctx.stroke();
-  }
-
-  data.forEach((item, i) => {
-    ctx.fillStyle = gradeColor(item.grade);
-    ctx.beginPath();
-    ctx.arc(xAt(i), yAt(item.grade), data.length > 35 ? 2.5 : 4, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  const labelStep = Math.max(1, Math.ceil(data.length / 8));
-  ctx.fillStyle = muted;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  data.forEach((item, i) => {
-    if (i % labelStep === 0 || i === data.length - 1) {
-      ctx.fillText(item.label, xAt(i), height - pad.bottom + 10);
-    }
-  });
+function renderBars(data,range){
+  els.barChart.innerHTML="";els.barChart.style.gridTemplateColumns=`repeat(${data.length},minmax(${range==="week"?"38px":"24px"},1fr))`;els.barChart.style.width=data.length>30?`${data.length*4}%`:"100%";
+  data.forEach((x,i)=>{const show=range==="week"||range==="year"||(range==="month"&&i%3===0)||(range==="fiveYear"&&i%6===0);const el=document.createElement("div");el.className="bar-item";el.innerHTML=`<div class="bar-wrap"><div class="bar ${gradeClass(x.grade)}" style="height:${Math.max(2,x.grade)}%"></div></div><div class="bar-grade">${x.grade}%</div><div class="bar-label">${show?x.label:""}</div>`;els.barChart.appendChild(el)});
 }
-
-function renderHistory() {
-  const range = state.preferences.range;
-  const chartType = state.preferences.chartType;
-  const result = rangeData(range);
-  els.chartTitle.textContent = result.title;
-
-  const recorded = result.data.filter(x => x.grade > 0);
-  const average = recorded.length ? Math.round(recorded.reduce((sum, x) => sum + x.grade, 0) / recorded.length) : 0;
-  els.rangeAverage.textContent = `${average}% avg`;
-
-  document.querySelectorAll("#rangeControls button").forEach(btn => btn.classList.toggle("active", btn.dataset.range === range));
-  document.querySelectorAll("#chartTypeControls button").forEach(btn => btn.classList.toggle("active", btn.dataset.chart === chartType));
-
-  els.barChart.classList.toggle("hidden", chartType !== "bar");
-  els.lineChart.classList.toggle("hidden", chartType !== "line");
-
-  if (chartType === "bar") renderBarChart(result.data, range);
-  else renderLineChart(result.data);
+function renderLine(data){
+  const c=els.lineChart,w=Math.max(320,c.parentElement.clientWidth),h=260,r=devicePixelRatio||1;c.width=w*r;c.height=h*r;c.style.width=w+"px";c.style.height=h+"px";const ctx=c.getContext("2d");ctx.scale(r,r);ctx.clearRect(0,0,w,h);
+  const p={l:34,r:18,t:20,b:34},pw=w-p.l-p.r,ph=h-p.t-p.b,muted=getComputedStyle(document.documentElement).getPropertyValue("--muted").trim();
+  ctx.font="11px system-ui";ctx.textAlign="right";ctx.textBaseline="middle";
+  [0,25,50,75,100].forEach(v=>{const y=p.t+ph-(v/100)*ph;ctx.strokeStyle="rgba(255,255,255,.08)";ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(w-p.r,y);ctx.stroke();ctx.fillStyle=muted;ctx.fillText(v,p.l-7,y)});
+  const x=i=>data.length===1?p.l+pw/2:p.l+i/(data.length-1)*pw,y=g=>p.t+ph-(g/100)*ph;
+  for(let i=0;i<data.length-1;i++){ctx.strokeStyle=gradeColor((data[i].grade+data[i+1].grade)/2);ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x(i),y(data[i].grade));ctx.lineTo(x(i+1),y(data[i+1].grade));ctx.stroke()}
+  data.forEach((d,i)=>{ctx.fillStyle=gradeColor(d.grade);ctx.beginPath();ctx.arc(x(i),y(d.grade),data.length>35?2.5:4,0,Math.PI*2);ctx.fill()});
 }
-
-function calculateStreak() {
-  let streak = 0;
-  const d = dayAtNoon();
-  for (let i = 0; i < 3650; i++) {
-    const key = dateKey(d);
-    const grade = metricsForDay(key).grade;
-    if (grade > 0) streak++;
-    else if (i !== 0) break;
-    d.setDate(d.getDate() - 1);
-  }
-  return streak;
+function calculateStreak(maxDays=3650){
+  let s=0,d=atNoon();for(let i=0;i<maxDays;i++){const g=metrics(dateKey(d)).grade;if(g>0)s++;else if(i!==0)break;d.setDate(d.getDate()-1)}return s;
 }
-
-function renderManageList() {
-  els.manageList.innerHTML = "";
-  state.habits.forEach(h => {
-    const btn = document.createElement("button");
-    btn.className = "manage-item";
-    btn.innerHTML = `<span>${escapeHtml(h.name)}</span><small>${h.type === "good" ? "+" : "−"}${h.points} pts</small>`;
-    btn.addEventListener("click", () => {
-      els.manageDialog.close();
-      openHabitDialog(h.type, h);
-    });
-    els.manageList.appendChild(btn);
-  });
+function longestStreak(){
+  const keys=Object.keys({...state.logs,...state.snapshots}).sort();let best=0,cur=0,prev=null;
+  keys.forEach(k=>{if(metrics(k).grade<=0){cur=0;prev=null;return}const d=new Date(k+"T12:00:00");if(prev){const diff=(d-prev)/86400000;cur=diff===1?cur+1:1}else cur=1;best=Math.max(best,cur);prev=d});return best;
 }
-
-function render() {
-  syncSnapshot();
-  saveState();
-
-  const today = new Date();
-  const metrics = metricsForDay(dateKey());
-  els.todayLabel.textContent = today.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
-  els.todayScore.textContent = metrics.raw;
-  els.todayGrade.textContent = `${metrics.grade}%`;
-  els.todayGrade.style.color = gradeColor(metrics.grade);
-  els.pointsPossible.textContent = `of ${metrics.possible} possible`;
-  els.streakCount.textContent = calculateStreak();
-
-  renderHabits("good", els.goodList);
-  renderHabits("bad", els.badList);
-  renderHistory();
-  renderManageList();
+function avgDays(n){
+  const now=atNoon(),vals=[];for(let i=0;i<n;i++){const d=atNoon(now);d.setDate(d.getDate()-i);const k=dateKey(d);if(state.logs[k]||state.snapshots[k])vals.push(metrics(k).grade)}return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
 }
-
-function openHabitDialog(type, habit = null) {
-  els.habitForm.reset();
-  els.habitType.value = type;
-  els.habitId.value = habit?.id || "";
-  els.habitName.value = habit?.name || "";
-  els.habitPoints.value = habit?.points || (type === "good" ? 10 : 5);
-  els.dialogTitle.textContent = habit ? "Edit habit" : `Add ${type} habit`;
-  els.deleteHabitBtn.classList.toggle("hidden", !habit);
-  els.habitDialog.showModal();
-  setTimeout(() => els.habitName.focus(), 50);
+function renderStats(){
+  $("#weeklyAvg").textContent=avgDays(7)+"%";$("#monthlyAvg").textContent=avgDays(30)+"%";$("#yearlyAvg").textContent=avgDays(365)+"%";
+  const grades=Object.keys({...state.logs,...state.snapshots}).map(k=>metrics(k).grade);$("#bestGrade").textContent=(grades.length?Math.max(...grades):0)+"%";
+  $("#longestStreak").textContent=longestStreak();
+  let total=0;Object.values(state.logs).forEach(log=>total+=Object.values(log).filter(Boolean).length);$("#totalCompletions").textContent=total;
+  const days=Math.max(1,Object.keys(state.logs).length),wrap=$("#habitStats");wrap.innerHTML="";
+  state.habits.forEach(h=>{let count=0;Object.values(state.logs).forEach(log=>{if(log[h.id])count++});const pct=Math.round(count/days*100);const el=document.createElement("div");el.className="habit-stat";el.innerHTML=`<div class="habit-stat-top"><strong>${esc(h.name)}</strong><span>${pct}%</span></div><div class="habit-stat-bar"><div class="habit-stat-fill" style="width:${pct}%"></div></div><small class="muted">${count} recorded completion${count===1?"":"s"}</small>`;wrap.appendChild(el)});
 }
+function renderCalendar(){
+  const y=calendarCursor.getFullYear(),m=calendarCursor.getMonth();els.calendarMonth.textContent=calendarCursor.toLocaleDateString(undefined,{month:"long",year:"numeric"});els.calendarGrid.innerHTML="";
+  const first=new Date(y,m,1),last=new Date(y,m+1,0);
+  for(let i=0;i<first.getDay();i++){const e=document.createElement("div");e.className="calendar-day empty-day";els.calendarGrid.appendChild(e)}
+  for(let d=1;d<=last.getDate();d++){const dt=new Date(y,m,d,12),k=dateKey(dt),g=metrics(k).grade,b=document.createElement("button");b.className=`calendar-day ${gradeClass(g)}`;b.innerHTML=`<strong>${d}</strong><small>${g}%</small>`;b.onclick=()=>showDay(k,b);els.calendarGrid.appendChild(b)}
+}
+function showDay(key,button){
+  document.querySelectorAll(".calendar-day").forEach(b=>b.classList.remove("selected"));button.classList.add("selected");
+  const g=metrics(key),log=state.logs[key]||{},done=state.habits.filter(h=>log[h.id]);
+  els.dayDetail.innerHTML=`<h3>${new Date(key+"T12:00:00").toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric",year:"numeric"})}</h3><strong style="font-size:2rem;color:${gradeColor(g.grade)}">${g.grade}%</strong><div class="day-list">${done.length?done.map(h=>`<div class="day-row"><span>${esc(h.name)}</span><strong>${h.type==="good"?"+":"−"}${h.points}</strong></div>`).join(""):'<p class="muted">No habits recorded.</p>'}</div>`;
+}
+function renderManage(){
+  els.manageList.innerHTML="";state.habits.forEach(h=>{const b=document.createElement("button");b.className="manage-item";b.innerHTML=`<span>${esc(h.name)}</span><small>${h.type==="good"?"+":"−"}${h.points}</small>`;b.onclick=()=>{els.manageDialog.close();openHabit(h.type,h)};els.manageList.appendChild(b)});
+}
+function render(){
+  syncSnapshot();saveLocal();
+  const m=metrics(dateKey());els.todayGrade.textContent=m.grade+"%";els.todayGrade.style.color=gradeColor(m.grade);els.letterGrade.textContent=letter(m.grade);els.gradeProgress.style.width=m.grade+"%";els.todayScore.textContent=m.raw;els.pointsPossible.textContent=`of ${m.possible} possible`;els.streakCount.textContent=calculateStreak();
+  renderHabits("good",els.goodList);renderHabits("bad",els.badList);renderHistory();renderStats();renderCalendar();renderManage();
+}
+function openHabit(type,h=null){
+  els.habitForm.reset();els.habitType.value=type;els.habitId.value=h?.id||"";els.habitName.value=h?.name||"";els.habitPoints.value=h?.points||(type==="good"?10:5);els.dialogTitle.textContent=h?"Edit habit":`Add ${type} habit`;els.deleteHabitBtn.classList.toggle("hidden",!h);els.habitDialog.showModal();
+}
+function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 
-document.querySelectorAll(".small-add").forEach(btn => {
-  btn.addEventListener("click", () => openHabitDialog(btn.dataset.type));
-});
-
-document.querySelector("#settingsBtn").addEventListener("click", () => {
-  renderManageList();
-  els.manageDialog.showModal();
-});
-
-document.querySelector("#closeManageBtn").addEventListener("click", () => els.manageDialog.close());
-
-document.querySelectorAll("#rangeControls button").forEach(btn => {
-  btn.addEventListener("click", () => {
-    state.preferences.range = btn.dataset.range;
-    saveState();
-    renderHistory();
-  });
-});
-
-document.querySelectorAll("#chartTypeControls button").forEach(btn => {
-  btn.addEventListener("click", () => {
-    state.preferences.chartType = btn.dataset.chart;
-    saveState();
-    renderHistory();
-  });
-});
-
-els.habitForm.addEventListener("submit", event => {
-  event.preventDefault();
-  const name = els.habitName.value.trim();
-  const points = Number(els.habitPoints.value);
-  const type = els.habitType.value;
-  const id = els.habitId.value;
-
-  if (!name || !Number.isFinite(points) || points < 1) return;
-
-  if (id) {
-    const habit = state.habits.find(h => h.id === id);
-    if (habit) Object.assign(habit, { name, points, type });
-  } else {
-    state.habits.push({ id: crypto.randomUUID(), name, points, type });
-  }
-
-  syncSnapshot();
-  saveState();
-  els.habitDialog.close();
-  render();
-});
-
-els.deleteHabitBtn.addEventListener("click", () => {
-  const id = els.habitId.value;
-  if (!id) return;
-  state.habits = state.habits.filter(h => h.id !== id);
-  syncSnapshot();
-  saveState();
-  els.habitDialog.close();
-  render();
-});
-
-document.querySelector("#resetTodayBtn").addEventListener("click", () => {
-  if (confirm("Clear all checkoffs for today?")) {
-    state.logs[dateKey()] = {};
-    syncSnapshot();
-    saveState();
-    render();
+$("#googleSignInBtn").onclick=async()=>{
+  els.authStatus.textContent="Opening Google sign-in…";
+  try{
+    const mobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if(mobile)await signInWithRedirect(auth,provider);else await signInWithPopup(auth,provider);
+  }catch(e){console.error(e);els.authStatus.textContent=e.message}
+};
+getRedirectResult(auth).catch(e=>{els.authStatus.textContent=e.message});
+onAuthStateChanged(auth,async u=>{
+  user=u;
+  if(u){
+    els.authScreen.classList.add("hidden");els.app.classList.remove("hidden");els.signedInAs.textContent=`Signed in as ${u.email||u.displayName}`;
+    els.syncBadge.textContent="● Loading";
+    try{await hydrateFromCloud();render();els.syncBadge.textContent="● Synced"}catch(e){console.error(e);render();els.syncBadge.textContent="● Offline"}
+  }else{
+    if(unsub)unsub();els.app.classList.add("hidden");els.authScreen.classList.remove("hidden");
   }
 });
-
-window.addEventListener("resize", () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    if (state.preferences.chartType === "line") renderHistory();
-  }, 150);
-});
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, c => ({
-    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
-  }[c]));
-}
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js").catch(() => {});
-}
-
-render();
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));b.classList.add("active");$("#"+b.dataset.view+"View").classList.add("active")});
+document.querySelectorAll(".small-add").forEach(b=>b.onclick=()=>openHabit(b.dataset.type));
+$("#settingsBtn").onclick=()=>els.manageDialog.showModal();$("#closeManageBtn").onclick=()=>els.manageDialog.close();$("#signOutBtn").onclick=()=>signOut(auth);
+document.querySelectorAll("#rangeControls button").forEach(b=>b.onclick=()=>{state.preferences.range=b.dataset.range;queueSave();renderHistory()});
+document.querySelectorAll("#chartTypeControls button").forEach(b=>b.onclick=()=>{state.preferences.chartType=b.dataset.chart;queueSave();renderHistory()});
+els.habitForm.onsubmit=e=>{e.preventDefault();const name=els.habitName.value.trim(),points=Number(els.habitPoints.value),type=els.habitType.value,id=els.habitId.value;if(!name||points<1)return;if(id){const h=state.habits.find(x=>x.id===id);Object.assign(h,{name,points,type})}else state.habits.push({id:crypto.randomUUID(),name,points,type});syncSnapshot();queueSave();els.habitDialog.close();render()};
+els.deleteHabitBtn.onclick=()=>{const id=els.habitId.value;state.habits=state.habits.filter(h=>h.id!==id);Object.values(state.logs).forEach(log=>delete log[id]);syncSnapshot();queueSave();els.habitDialog.close();render()};
+$("#resetTodayBtn").onclick=()=>{if(confirm("Clear all checkoffs for today?")){state.logs[dateKey()]={};syncSnapshot();queueSave();render()}};
+$("#prevMonth").onclick=()=>{calendarCursor.setMonth(calendarCursor.getMonth()-1);renderCalendar()};$("#nextMonth").onclick=()=>{calendarCursor.setMonth(calendarCursor.getMonth()+1);renderCalendar()};
+window.addEventListener("resize",()=>{if(state.preferences.chartType==="line")renderHistory()});
