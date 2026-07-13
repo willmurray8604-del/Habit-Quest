@@ -1,4 +1,4 @@
-const CACHE = "habit-quest-v3-1";
+const CACHE = "habit-quest-v3";
 const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", event => {

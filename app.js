@@ -32,8 +32,6 @@ const defaultState = {
   ],
   logs: {},
   snapshots: {},
-  notes: {},
-  daySettings: {},
   preferences: { range: "week", chartType: "bar" },
   createdAt: Date.now()
 };
@@ -57,8 +55,7 @@ const els = {
   habitForm: $("#habitForm"), habitType: $("#habitType"), habitId: $("#habitId"),
   habitName: $("#habitName"), habitPoints: $("#habitPoints"), dialogTitle: $("#dialogTitle"),
   deleteHabitBtn: $("#deleteHabitBtn"), settingsDialog: $("#settingsDialog"),
-  signedInAs: $("#signedInAs"), manageList: $("#manageList"),
-  dailyNotes: $("#dailyNotes"), noteStatus: $("#noteStatus")
+  signedInAs: $("#signedInAs"), manageList: $("#manageList")
 };
 
 function loadLocal() {
@@ -66,8 +63,6 @@ function loadLocal() {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (stored?.habits && stored?.logs) {
       stored.snapshots ||= {};
-      stored.notes ||= {};
-      stored.daySettings ||= {};
       stored.preferences ||= { range: "week", chartType: "bar" };
       return stored;
     }
@@ -85,28 +80,18 @@ function atNoon(date = new Date()) {
   d.setHours(12, 0, 0, 0);
   return d;
 }
-function excludedHabitIds(key = dateKey()) {
-  state.daySettings ||= {};
-  state.daySettings[key] ||= { excludedHabitIds: [] };
-  return state.daySettings[key].excludedHabitIds;
-}
-function habitCountsToday(habitId, key = dateKey()) {
-  return !excludedHabitIds(key).includes(habitId);
-}
-function totalPossibleGoodPoints(key = dateKey()) {
-  return state.habits
-    .filter(h => h.type === "good" && habitCountsToday(h.id, key))
-    .reduce((sum, h) => sum + h.points, 0);
+function totalPossibleGoodPoints() {
+  return state.habits.filter(h => h.type === "good").reduce((sum, h) => sum + h.points, 0);
 }
 function rawScoreForDay(key) {
   const log = state.logs[key] || {};
   return state.habits.reduce((sum, habit) => {
-    if (!habitCountsToday(habit.id, key) || !log[habit.id]) return sum;
+    if (!log[habit.id]) return sum;
     return sum + (habit.type === "good" ? habit.points : -habit.points);
   }, 0);
 }
 function syncSnapshot(key = dateKey()) {
-  const possible = totalPossibleGoodPoints(key);
+  const possible = totalPossibleGoodPoints();
   const raw = rawScoreForDay(key);
   const grade = possible > 0 ? Math.max(0, Math.min(100, Math.round(raw / possible * 100))) : 0;
   state.snapshots[key] = { raw, possible, grade };
@@ -115,7 +100,7 @@ function metricsForDay(key) {
   if (key === dateKey()) syncSnapshot(key);
   if (state.snapshots[key]) return state.snapshots[key];
   if (state.logs[key]) {
-    const possible = totalPossibleGoodPoints(key);
+    const possible = totalPossibleGoodPoints();
     const raw = rawScoreForDay(key);
     return { raw, possible, grade: possible ? Math.max(0, Math.min(100, Math.round(raw / possible * 100))) : 0 };
   }
@@ -166,10 +151,6 @@ async function hydrateFromCloud() {
   if (snapshot.exists()) {
     const remote = snapshot.data();
     delete remote.updatedAt;
-    remote.notes ||= {};
-    remote.daySettings ||= {};
-    remote.snapshots ||= {};
-    remote.preferences ||= { range: "week", chartType: "bar" };
 
     const localHasHistory = Object.keys(state.logs || {}).length > 0;
     const remoteHasHistory = Object.keys(remote.logs || {}).length > 0;
@@ -189,10 +170,6 @@ async function hydrateFromCloud() {
     if (!snapshot.exists()) return;
     const remote = snapshot.data();
     delete remote.updatedAt;
-    remote.notes ||= {};
-    remote.daySettings ||= {};
-    remote.snapshots ||= {};
-    remote.preferences ||= { range: "week", chartType: "bar" };
     if (JSON.stringify(remote) !== JSON.stringify(state)) {
       state = remote;
       saveLocal();
@@ -227,75 +204,6 @@ function gradeMessage(grade) {
   if (grade > 0) return "Recovery required";
   return "Awaiting input";
 }
-function toggleHabitCounting(id) {
-  const excluded = excludedHabitIds();
-  const index = excluded.indexOf(id);
-  if (index >= 0) {
-    excluded.splice(index, 1);
-  } else {
-    excluded.push(id);
-    if (state.logs[dateKey()]) state.logs[dateKey()][id] = false;
-  }
-  syncSnapshot();
-  queueCloudSave();
-  render();
-}
-function individualHabitStreak(habitId) {
-  let streak = 0;
-  const d = atNoon();
-  const todayKey = dateKey(d);
-
-  // An unfinished current day should not erase yesterday's streak.
-  if (!isDone(habitId, todayKey)) d.setDate(d.getDate() - 1);
-
-  for (let i = 0; i < 3650; i++) {
-    const key = dateKey(d);
-
-    if (!habitCountsToday(habitId, key)) {
-      d.setDate(d.getDate() - 1);
-      continue;
-    }
-
-    if (isDone(habitId, key)) {
-      streak++;
-      d.setDate(d.getDate() - 1);
-      continue;
-    }
-
-    break;
-  }
-  return streak;
-}
-function longestHabitStreak(habitId) {
-  const keys = Object.keys({ ...state.logs, ...state.daySettings }).sort();
-  let best = 0;
-  let current = 0;
-  let previousActiveDate = null;
-
-  keys.forEach(key => {
-    if (!habitCountsToday(habitId, key)) return;
-
-    const date = new Date(`${key}T12:00:00`);
-    const completed = isDone(habitId, key);
-
-    if (!completed) {
-      current = 0;
-      previousActiveDate = date;
-      return;
-    }
-
-    if (previousActiveDate) {
-      current = current > 0 ? current + 1 : 1;
-    } else {
-      current = 1;
-    }
-
-    best = Math.max(best, current);
-    previousActiveDate = date;
-  });
-
-  return best;
-}
 function toggleHabit(id) {
   const log = logFor();
   log[id] = !log[id];
@@ -314,24 +222,17 @@ function renderHabits(type, container) {
 
   habits.forEach(habit => {
     const done = isDone(habit.id);
-    const counting = habitCountsToday(habit.id);
-    const streak = individualHabitStreak(habit.id);
     const row = document.createElement("article");
-    row.className = `habit ${habit.type} ${done ? "done" : ""} ${counting ? "" : "paused"}`;
+    row.className = `habit ${habit.type} ${done ? "done" : ""}`;
     row.innerHTML = `
       <button class="check-button" aria-label="${done ? "Undo" : "Complete"} ${escapeHtml(habit.name)}">${done ? "✓" : ""}</button>
       <div>
         <span class="habit-name">${escapeHtml(habit.name)}</span>
-        <div class="habit-sub ${counting ? "" : "paused-copy"}">${counting ? (habit.type === "good" ? "Earn points" : "Apply penalty") : "Not counting today"}</div>
+        <div class="habit-sub">${habit.type === "good" ? "Earn points" : "Apply penalty"}</div>
       </div>
-      <span class="habit-streak" title="Current individual streak">🔥 <strong>${streak}</strong></span>
-      <span class="points ${habit.type === "good" ? "good-points" : "bad-points"}">${habit.type === "good" ? "+" : "−"}${habit.points}</span>
-      <button class="count-toggle ${counting ? "" : "paused"}" aria-label="${counting ? "Pause for today" : "Count today"}" title="${counting ? "Counting today — tap to pause" : "Paused today — tap to count"}">${counting ? "●" : "○"}</button>
+      <span class="points">${habit.type === "good" ? "+" : "−"}${habit.points}</span>
     `;
-    row.querySelector(".check-button").addEventListener("click", () => {
-      if (counting) toggleHabit(habit.id);
-    });
-    row.querySelector(".count-toggle").addEventListener("click", () => toggleHabitCounting(habit.id));
+    row.querySelector(".check-button").addEventListener("click", () => toggleHabit(habit.id));
     container.appendChild(row);
   });
 }
@@ -597,10 +498,7 @@ function renderStatistics() {
       <div class="habit-stat-bar">
         <div class="habit-stat-fill" style="width:${percentage}%"></div>
       </div>
-      <div class="habit-stat-meta">
-        <span>${count} completion${count === 1 ? "" : "s"}</span>
-        <span>Current 🔥 ${individualHabitStreak(habit.id)} · Best ${longestHabitStreak(habit.id)}</span>
-      </div>
+      <small class="habit-sub">${count} recorded completion${count === 1 ? "" : "s"}</small>
     `;
     els.habitStats.appendChild(card);
   });
@@ -627,11 +525,9 @@ function renderCalendar() {
     const date = new Date(year, month, day, 12);
     const key = dateKey(date);
     const grade = metricsForDay(key).grade;
-    const hasRecord = Boolean(state.logs[key] || state.snapshots[key] || state.notes?.[key]);
 
     const button = document.createElement("button");
-    const calendarGradeClass = hasRecord ? `recorded-${gradeClass(grade)}` : "no-record";
-    button.className = `calendar-day ${calendarGradeClass}`;
+    button.className = `calendar-day ${gradeClass(grade)}`;
     button.innerHTML = `<strong>${day}</strong><small>${grade}%</small>`;
     button.addEventListener("click", () => showDayDetails(key, button));
     els.calendarGrid.appendChild(button);
@@ -644,8 +540,7 @@ function showDayDetails(key, selectedButton) {
   const metrics = metricsForDay(key);
   const log = state.logs[key] || {};
   const completed = state.habits.filter(habit => log[habit.id]);
-  const missedGood = state.habits.filter(habit => habit.type === "good" && habitCountsToday(habit.id, key) && !log[habit.id]);
-  const note = state.notes?.[key] || "";
+  const missedGood = state.habits.filter(habit => habit.type === "good" && !log[habit.id]);
 
   els.dayDetail.innerHTML = `
     <h3>${new Date(`${key}T12:00:00`).toLocaleDateString(undefined, {
@@ -664,10 +559,6 @@ function showDayDetails(key, selectedButton) {
       ${missedGood.length
         ? `<div class="day-row"><span>Missed good habits</span><strong>${missedGood.length}</strong></div>`
         : ""}
-    </div>
-    <div class="day-notes">
-      <strong>Daily notes</strong>
-      <p>${note ? escapeHtml(note) : "No notes recorded."}</p>
     </div>
   `;
 }
@@ -705,8 +596,6 @@ function render() {
   els.pointsPossible.textContent = `of ${todayMetrics.possible} possible`;
   els.streakCount.textContent = currentStreak();
   els.dashboardWeeklyAvg.textContent = `${recordedAverage(7)}%`;
-  const todayNote = state.notes?.[dateKey()] || "";
-  if (document.activeElement !== els.dailyNotes) els.dailyNotes.value = todayNote;
 
   renderHabits("good", els.goodList);
   renderHabits("bad", els.badList);
@@ -785,19 +674,6 @@ document.querySelectorAll(".nav-button").forEach(button => {
 
 document.querySelectorAll(".text-button").forEach(button => {
   button.addEventListener("click", () => openHabitDialog(button.dataset.type));
-});
-
-let noteSaveTimer = null;
-els.dailyNotes.addEventListener("input", () => {
-  state.notes ||= {};
-  state.notes[dateKey()] = els.dailyNotes.value;
-  els.noteStatus.textContent = "Saving…";
-  saveLocal();
-  clearTimeout(noteSaveTimer);
-  noteSaveTimer = setTimeout(() => {
-    queueCloudSave();
-    els.noteStatus.textContent = "Saved";
-  }, 450);
 });
 
 $("#settingsBtn").addEventListener("click", () => els.settingsDialog.showModal());
