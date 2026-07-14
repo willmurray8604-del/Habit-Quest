@@ -1,15 +1,12 @@
-# Habit Quest v5.2 — Titanium Grid
+# Habit Quest v6 — Stable Journal
 
-Keeps all current functionality, including:
-- Apple Pencil handwriting notes
-- Typed notes
-- Firebase sync
-- Flexible habits
-- Individual streaks
-- Statistics and calendar
+Built from the user-provided working Titanium Grid files.
 
-Visual changes:
-- Removed the rotating radar sweep from the grade ring
-- Removed the mouse-following spotlight
-- Added a faint titanium tech grid behind the interface
-- Kept glass blur, reflections, particles, parallax, and micro-animations
+- Firebase authentication code retained
+- Full-screen evening journal
+- Smooth pressure-sensitive Apple Pencil ink
+- Palm/finger rejection while Pencil is active
+- Pen, eraser, undo, redo, and clear
+- Handwriting auto-saves locally and to Firebase
+- Calendar displays the actual handwritten page
+- Existing handwriting stroke data remains compatible

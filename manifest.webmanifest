@@ -5,7 +5,7 @@
   "display": "standalone",
   "background_color": "#070809",
   "theme_color": "#070809",
-  "description": "A synced Glass OS habit tracker with typed and Apple Pencil handwritten daily notes.",
+  "description": "A synced Glass OS habit tracker with stable full-screen Apple Pencil journaling.",
   "icons": [
     {
       "src": "icon.svg",

@@ -122,11 +122,22 @@
             <button id="penToolBtn" class="tool-button active" type="button">Pen</button>
             <button id="eraserToolBtn" class="tool-button" type="button">Eraser</button>
             <button id="undoStrokeBtn" class="tool-button" type="button">Undo</button>
+            <button id="redoStrokeBtn" class="tool-button" type="button">Redo</button>
             <button id="clearDrawingBtn" class="tool-button danger-tool" type="button">Clear</button>
+            <button id="fullscreenDrawingBtn" class="tool-button fullscreen-tool" type="button">Full screen</button>
           </div>
-          <div class="canvas-frame">
-            <canvas id="handwritingCanvas" aria-label="Handwritten daily notes"></canvas>
-            <div id="canvasHint" class="canvas-hint">Write with Apple Pencil or your finger</div>
+          <div id="drawingWorkspace" class="drawing-workspace">
+            <div class="journal-fullscreen-header">
+              <div>
+                <p class="kicker">EVENING JOURNAL</p>
+                <h2 id="journalDateTitle">Today</h2>
+              </div>
+              <button id="exitFullscreenDrawingBtn" class="tool-button" type="button">Done</button>
+            </div>
+            <div class="canvas-frame pen-active">
+              <canvas id="handwritingCanvas" aria-label="Handwritten daily notes"></canvas>
+              <div id="canvasHint" class="canvas-hint">Write with Apple Pencil or your finger</div>
+            </div>
           </div>
         </div>
       </section>
