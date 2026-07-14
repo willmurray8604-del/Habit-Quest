@@ -1,17 +1,6 @@
-# Habit Quest v6.2 — Typed Notes Only
+# Habit Quest v6.3 — Clean Typed Notes Only
 
-Removed:
-- Handwriting mode
-- Apple Pencil canvas
-- Pen, eraser, undo, and clear controls
+The handwriting feature is physically removed from HTML, JavaScript, and CSS.
 
-Kept:
-- Typed daily notes
-- Firebase sync
-- Habits and daily grades
-- Flexible COUNTING / PAUSED habits
-- Good and bad habit streaks
-- Statistics, charts, and calendar
-- Titanium grid and Glass OS styling
-
-Typed notes continue to save locally and sync to Firebase by calendar date.
+The Daily Log contains one typed textarea only.
+A version marker appears in Settings: Habit Quest v6.3 · Typed notes only.

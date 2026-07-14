@@ -33,7 +33,6 @@ const defaultState = {
   logs: {},
   snapshots: {},
   notes: {},
-  handwriting: {},
   daySettings: {},
   preferences: { range: "week", chartType: "bar" },
   createdAt: Date.now()
@@ -59,15 +58,7 @@ const els = {
   habitName: $("#habitName"), habitPoints: $("#habitPoints"), dialogTitle: $("#dialogTitle"),
   deleteHabitBtn: $("#deleteHabitBtn"), settingsDialog: $("#settingsDialog"),
   signedInAs: $("#signedInAs"), manageList: $("#manageList"),
-  dailyNotes: $("#dailyNotes"), noteStatus: $("#noteStatus"),
-  typeModeBtn: $("#typeModeBtn"), writeModeBtn: $("#writeModeBtn"),
-  typeNotePane: $("#typeNotePane"), writeNotePane: $("#writeNotePane"),
-  handwritingCanvas: $("#handwritingCanvas"), canvasHint: $("#canvasHint"),
-  penToolBtn: $("#penToolBtn"), eraserToolBtn: $("#eraserToolBtn"),
-  undoStrokeBtn: $("#undoStrokeBtn"), redoStrokeBtn: $("#redoStrokeBtn"),
-  clearDrawingBtn: $("#clearDrawingBtn"), fullscreenDrawingBtn: $("#fullscreenDrawingBtn"),
-  exitFullscreenDrawingBtn: $("#exitFullscreenDrawingBtn"), drawingWorkspace: $("#drawingWorkspace"),
-  journalDateTitle: $("#journalDateTitle")
+  dailyNotes: $("#dailyNotes"), noteStatus: $("#noteStatus")
 };
 
 function loadLocal() {
@@ -76,7 +67,6 @@ function loadLocal() {
     if (stored?.habits && stored?.logs) {
       stored.snapshots ||= {};
       stored.notes ||= {};
-      stored.handwriting ||= {};
       stored.daySettings ||= {};
       stored.preferences ||= { range: "week", chartType: "bar" };
       return stored;
@@ -177,7 +167,6 @@ async function hydrateFromCloud() {
     const remote = snapshot.data();
     delete remote.updatedAt;
     remote.notes ||= {};
-    remote.handwriting ||= {};
     remote.daySettings ||= {};
     remote.snapshots ||= {};
     remote.preferences ||= { range: "week", chartType: "bar" };
@@ -201,7 +190,6 @@ async function hydrateFromCloud() {
     const remote = snapshot.data();
     delete remote.updatedAt;
     remote.notes ||= {};
-    remote.handwriting ||= {};
     remote.daySettings ||= {};
     remote.snapshots ||= {};
     remote.preferences ||= { range: "week", chartType: "bar" };
@@ -671,7 +659,7 @@ function renderCalendar() {
     const date = new Date(year, month, day, 12);
     const key = dateKey(date);
     const grade = metricsForDay(key).grade;
-    const hasRecord = Boolean(state.logs[key] || state.snapshots[key] || state.notes?.[key] || state.handwriting?.[key]?.length);
+    const hasRecord = Boolean(state.logs[key] || state.snapshots[key] || state.notes?.[key]);
 
     const button = document.createElement("button");
     const calendarGradeClass = hasRecord ? `recorded-${gradeClass(grade)}` : "no-record";
@@ -690,7 +678,6 @@ function showDayDetails(key, selectedButton) {
   const completed = state.habits.filter(habit => log[habit.id]);
   const missedGood = state.habits.filter(habit => habit.type === "good" && habitCountsToday(habit.id, key) && !log[habit.id]);
   const note = state.notes?.[key] || "";
-  const hasHandwriting = Boolean(state.handwriting?.[key]?.length);
 
   els.dayDetail.innerHTML = `
     <h3>${new Date(`${key}T12:00:00`).toLocaleDateString(undefined, {
@@ -713,13 +700,9 @@ function showDayDetails(key, selectedButton) {
     <div class="day-notes">
       <strong>Daily notes</strong>
       <p>${note ? escapeHtml(note) : "No typed notes recorded."}</p>
-      ${hasHandwriting ? '<div id="selectedHandwritingPreview"><strong>Handwritten notes</strong></div>' : ""}
+      
     </div>
   `;
-  if (hasHandwriting) {
-    const previewHost = document.querySelector("#selectedHandwritingPreview");
-    if (previewHost) addHandwritingPreview(previewHost, state.handwriting[key]);
-  }
 }
 function renderManageList() {
   els.manageList.innerHTML = "";
@@ -757,8 +740,7 @@ function render() {
   els.streakCount.textContent = currentStreak();
   els.dashboardWeeklyAvg.textContent = `${recordedAverage(7)}%`;
   const todayNote = state.notes?.[dateKey()] || "";
-  if (document.activeElement !== els.dailyNotes) els.dailyNotes.value = todayNote;
-  if (noteMode === "write" && els.handwritingCanvas) requestAnimationFrame(() => { resizeDrawingCanvas(); renderDrawing(); });
+  if (document.activeElement !== els.dailyNotes) els.dailyNotes.value = todayNote; renderDrawing(); });
 
   renderHabits("good", els.goodList);
   renderHabits("bad", els.badList);
@@ -783,148 +765,6 @@ function escapeHtml(value) {
   }[character]));
 }
 
-
-let noteMode = "type";
-let drawingTool = "pen";
-let activeStroke = null;
-let drawingSaveTimer = null;
-let drawingFramePending = false;
-let pencilActiveUntil = 0;
-let redoStack = [];
-
-function todayStrokes() {
-  state.handwriting ||= {};
-  state.handwriting[dateKey()] ||= [];
-  return state.handwriting[dateKey()];
-}
-
-function setNoteMode(mode) {
-  noteMode = mode;
-  els.typeModeBtn.classList.toggle("active", mode === "type");
-  els.writeModeBtn.classList.toggle("active", mode === "write");
-  els.typeNotePane.classList.toggle("active", mode === "type");
-  els.writeNotePane.classList.toggle("active", mode === "write");
-  if (mode === "write") requestAnimationFrame(() => { resizeDrawingCanvas(); renderDrawing(); });
-}
-
-function setDrawingTool(tool) {
-  drawingTool = tool;
-  els.penToolBtn.classList.toggle("active", tool === "pen");
-  els.eraserToolBtn.classList.toggle("active", tool === "eraser");
-  const frame = els.handwritingCanvas.parentElement;
-  frame.classList.toggle("pen-active", tool === "pen");
-  frame.classList.toggle("eraser-active", tool === "eraser");
-}
-
-function normalizedPoint(event) {
-  const rect = els.handwritingCanvas.getBoundingClientRect();
-  return {
-    x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
-    y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
-    pressure: event.pointerType === "pen" ? Math.max(.08, Math.min(1, event.pressure || .35)) : .42,
-    time: performance.now()
-  };
-}
-
-function canvasMetrics(canvas) {
-  const ratio = Math.min(2, window.devicePixelRatio || 1);
-  return { ratio, width: canvas.width / ratio, height: canvas.height / ratio };
-}
-
-function resizeCanvas(canvas) {
-  const rect = canvas.getBoundingClientRect();
-  if (!rect.width || !rect.height) return false;
-  const ratio = Math.min(2, window.devicePixelRatio || 1);
-  const width = Math.max(1, Math.round(rect.width * ratio));
-  const height = Math.max(1, Math.round(rect.height * ratio));
-  if (canvas.width === width && canvas.height === height) return false;
-  canvas.width = width; canvas.height = height; return true;
-}
-
-function resizeDrawingCanvas() { if (resizeCanvas(els.handwritingCanvas)) renderDrawing(); }
-function inkWidth(point, tool) { return tool === "eraser" ? 30 : 1.15 + Math.pow(point.pressure || .35, .78) * 4.8; }
-
-function drawStroke(ctx, stroke, width, height) {
-  const points = stroke.points || [];
-  if (!points.length) return;
-  ctx.save();
-  ctx.lineCap = "round"; ctx.lineJoin = "round";
-  ctx.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
-  ctx.strokeStyle = "#f4f6f8"; ctx.fillStyle = stroke.tool === "eraser" ? "#000" : "#f4f6f8";
-  if (points.length === 1) {
-    const p = points[0]; ctx.beginPath(); ctx.arc(p.x*width,p.y*height,inkWidth(p,stroke.tool)/2,0,Math.PI*2); ctx.fill(); ctx.restore(); return;
-  }
-  ctx.beginPath(); ctx.moveTo(points[0].x*width,points[0].y*height);
-  for (let i=1;i<points.length-1;i++) {
-    const p=points[i], n=points[i+1];
-    ctx.lineWidth=inkWidth(p,stroke.tool);
-    ctx.quadraticCurveTo(p.x*width,p.y*height,((p.x+n.x)/2)*width,((p.y+n.y)/2)*height);
-  }
-  const last=points[points.length-1]; ctx.lineWidth=inkWidth(last,stroke.tool); ctx.lineTo(last.x*width,last.y*height); ctx.stroke(); ctx.restore();
-}
-
-function renderStrokes(canvas, strokes) {
-  const {ratio,width,height}=canvasMetrics(canvas); const ctx=canvas.getContext("2d");
-  ctx.setTransform(ratio,0,0,ratio,0,0); ctx.clearRect(0,0,width,height);
-  strokes.forEach(stroke=>drawStroke(ctx,stroke,width,height));
-}
-function renderDrawing(){ renderStrokes(els.handwritingCanvas,todayStrokes()); els.canvasHint.parentElement.classList.toggle("has-ink",todayStrokes().length>0); }
-function requestInkRender(){ if(drawingFramePending)return; drawingFramePending=true; requestAnimationFrame(()=>{drawingFramePending=false;renderDrawing();}); }
-function scheduleDrawingSave(){ saveLocal(); els.noteStatus.textContent="Saving…"; clearTimeout(drawingSaveTimer); drawingSaveTimer=setTimeout(()=>{queueCloudSave();els.noteStatus.textContent="Saved";},350); }
-
-function ignorePointer(event){
-  if(event.pointerType==="pen"){pencilActiveUntil=performance.now()+900;return false;}
-  return event.pointerType==="touch" && performance.now()<pencilActiveUntil;
-}
-function beginStroke(event){
-  if(noteMode!=="write"||ignorePointer(event))return; event.preventDefault();
-  els.handwritingCanvas.setPointerCapture?.(event.pointerId); els.handwritingCanvas.parentElement.classList.add("pencil-active");
-  activeStroke={tool:drawingTool,pointerId:event.pointerId,points:[normalizedPoint(event)]}; todayStrokes().push(activeStroke); redoStack=[]; requestInkRender();
-}
-function moveStroke(event){
-  if(!activeStroke||event.pointerId!==activeStroke.pointerId||ignorePointer(event))return; event.preventDefault();
-  const events=event.getCoalescedEvents?event.getCoalescedEvents():[event];
-  events.forEach(item=>{const p=normalizedPoint(item),prev=activeStroke.points.at(-1),dx=p.x-prev.x,dy=p.y-prev.y;if(dx*dx+dy*dy>.0000012)activeStroke.points.push(p);});
-  requestInkRender();
-}
-function endStroke(event){
-  if(!activeStroke||event.pointerId!==activeStroke.pointerId)return; event.preventDefault(); activeStroke=null;
-  els.handwritingCanvas.parentElement.classList.remove("pencil-active"); scheduleDrawingSave();
-}
-
-function enterJournalFullscreen(){
-  els.journalDateTitle.textContent=new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
-  els.drawingWorkspace.classList.add("fullscreen"); document.body.style.overflow="hidden";
-  requestAnimationFrame(()=>{resizeDrawingCanvas();renderDrawing();});
-}
-function exitJournalFullscreen(){
-  els.drawingWorkspace.classList.remove("fullscreen"); document.body.style.overflow="";
-  requestAnimationFrame(()=>{resizeDrawingCanvas();renderDrawing();});
-}
-
-function addHandwritingPreview(container, strokes){
-  const wrap=document.createElement("div");wrap.className="handwriting-preview";const canvas=document.createElement("canvas");wrap.appendChild(canvas);container.appendChild(wrap);
-  requestAnimationFrame(()=>{resizeCanvas(canvas);renderStrokes(canvas,strokes);});
-}
-
-// Journal listeners are guarded so they can never block authentication initialization.
-if (els.typeModeBtn && els.handwritingCanvas) {
-  els.typeModeBtn.addEventListener("click",()=>setNoteMode("type"));
-  els.writeModeBtn.addEventListener("click",()=>setNoteMode("write"));
-  els.penToolBtn.addEventListener("click",()=>setDrawingTool("pen"));
-  els.eraserToolBtn.addEventListener("click",()=>setDrawingTool("eraser"));
-  els.undoStrokeBtn.addEventListener("click",()=>{const stroke=todayStrokes().pop();if(stroke)redoStack.push(stroke);renderDrawing();scheduleDrawingSave();});
-  els.redoStrokeBtn.addEventListener("click",()=>{const stroke=redoStack.pop();if(stroke)todayStrokes().push(stroke);renderDrawing();scheduleDrawingSave();});
-  els.clearDrawingBtn.addEventListener("click",()=>{if(!todayStrokes().length||!confirm("Clear today's handwritten notes?"))return;redoStack.push(...todayStrokes());state.handwriting[dateKey()]=[];renderDrawing();scheduleDrawingSave();});
-  els.fullscreenDrawingBtn.addEventListener("click",enterJournalFullscreen);
-  els.exitFullscreenDrawingBtn.addEventListener("click",exitJournalFullscreen);
-  els.handwritingCanvas.addEventListener("pointerdown",beginStroke);
-  els.handwritingCanvas.addEventListener("pointermove",moveStroke);
-  els.handwritingCanvas.addEventListener("pointerup",endStroke);
-  els.handwritingCanvas.addEventListener("pointercancel",endStroke);
-  document.addEventListener("keydown",event=>{if(event.key==="Escape"&&els.drawingWorkspace.classList.contains("fullscreen"))exitJournalFullscreen();});
-  setDrawingTool("pen");
-}
 
 $("#googleSignInBtn").addEventListener("click", async () => {
   els.authStatus.textContent = "Opening secure sign-in…";
@@ -1071,7 +911,6 @@ $("#nextMonth").addEventListener("click", () => {
 
 window.addEventListener("resize", () => {
   if (state.preferences.chartType === "line") renderHistory();
-  if (noteMode === "write" && els.handwritingCanvas) requestAnimationFrame(() => { resizeDrawingCanvas(); renderDrawing(); });
 });
 
 
