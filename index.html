@@ -98,6 +98,24 @@
       </section>
 
 
+
+      <section class="todo-panel panel">
+        <div class="section-header todo-header">
+          <div>
+            <p class="kicker">OPEN TASKS</p>
+            <h2>To-do list</h2>
+          </div>
+          <span id="taskSummary" class="task-summary">0 open</span>
+        </div>
+
+        <div class="task-entry">
+          <input id="taskInput" maxlength="90" placeholder="Add a one-time task…" />
+          <button id="addTaskBtn" class="primary-action compact" type="button">Add task</button>
+        </div>
+
+        <div id="taskList" class="task-list"></div>
+      </section>
+
       <section class="daily-log panel">
         <div class="daily-log-head">
           <div class="log-icon">✎</div>
@@ -251,6 +269,38 @@
         <button type="button" id="deleteHabitBtn" class="delete-action hidden">Delete</button>
         <button value="cancel" class="secondary-action">Cancel</button>
         <button type="submit" class="primary-action compact">Save habit</button>
+      </div>
+    </form>
+  </dialog>
+
+
+  <dialog id="habitScoreDialog">
+    <form id="habitScoreForm">
+      <div class="dialog-header">
+        <div>
+          <p class="kicker">DAILY SCORE</p>
+          <h2 id="scoreHabitName">Good habit</h2>
+        </div>
+        <button type="button" class="icon-button" onclick="this.closest('dialog').close()">✕</button>
+      </div>
+
+      <input type="hidden" id="scoreHabitId" />
+      <input type="hidden" id="scoreMaximum" />
+
+      <label class="score-label">
+        Points earned today
+        <div class="score-input-row">
+          <input id="scoreEarned" type="number" min="0" step="1" inputmode="numeric" required />
+          <strong id="scoreMaximumLabel">/ 20 possible</strong>
+        </div>
+      </label>
+
+      <p class="settings-help">Give yourself the amount you honestly earned. For example, a 50% diet day worth 20 points would be 10/20.</p>
+
+      <div class="dialog-actions">
+        <button type="button" id="clearHabitScoreBtn" class="delete-action hidden">Clear score</button>
+        <button type="button" class="secondary-action" onclick="this.closest('dialog').close()">Cancel</button>
+        <button type="submit" class="primary-action compact">Save score</button>
       </div>
     </form>
   </dialog>

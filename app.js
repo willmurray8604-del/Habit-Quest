@@ -34,6 +34,8 @@ const defaultState = {
   snapshots: {},
   notes: {},
   handwriting: {},
+  tasks: [],
+  habitScores: {},
   daySettings: {},
   preferences: { range: "week", chartType: "bar" },
   createdAt: Date.now()
@@ -64,7 +66,13 @@ const els = {
   typeNotePane: $("#typeNotePane"), writeNotePane: $("#writeNotePane"),
   handwritingCanvas: $("#handwritingCanvas"), canvasHint: $("#canvasHint"),
   penToolBtn: $("#penToolBtn"), eraserToolBtn: $("#eraserToolBtn"),
-  undoStrokeBtn: $("#undoStrokeBtn"), clearDrawingBtn: $("#clearDrawingBtn")
+  undoStrokeBtn: $("#undoStrokeBtn"), clearDrawingBtn: $("#clearDrawingBtn"),
+  taskInput: $("#taskInput"), addTaskBtn: $("#addTaskBtn"), taskList: $("#taskList"),
+  taskSummary: $("#taskSummary"), habitScoreDialog: $("#habitScoreDialog"),
+  habitScoreForm: $("#habitScoreForm"), scoreHabitId: $("#scoreHabitId"),
+  scoreHabitName: $("#scoreHabitName"), scoreEarned: $("#scoreEarned"),
+  scoreMaximum: $("#scoreMaximum"), scoreMaximumLabel: $("#scoreMaximumLabel"),
+  clearHabitScoreBtn: $("#clearHabitScoreBtn")
 };
 
 function loadLocal() {
@@ -74,6 +82,8 @@ function loadLocal() {
       stored.snapshots ||= {};
       stored.notes ||= {};
       stored.handwriting ||= {};
+      stored.tasks ||= [];
+      stored.habitScores ||= {};
       stored.daySettings ||= {};
       stored.preferences ||= { range: "week", chartType: "bar" };
       return stored;
@@ -108,8 +118,13 @@ function totalPossibleGoodPoints(key = dateKey()) {
 function rawScoreForDay(key) {
   const log = state.logs[key] || {};
   return state.habits.reduce((sum, habit) => {
-    if (!habitCountsToday(habit.id, key) || !log[habit.id]) return sum;
-    return sum + (habit.type === "good" ? habit.points : -habit.points);
+    if (!habitCountsToday(habit.id, key)) return sum;
+
+    if (habit.type === "good") {
+      return sum + goodHabitScore(habit.id, key);
+    }
+
+    return sum + (log[habit.id] ? -habit.points : 0);
   }, 0);
 }
 function syncSnapshot(key = dateKey()) {
@@ -132,7 +147,19 @@ function logFor(key = dateKey()) {
   state.logs[key] ||= {};
   return state.logs[key];
 }
+function goodHabitScore(habitId, key = dateKey()) {
+  const habit = state.habits.find(item => item.id === habitId);
+  if (!habit || habit.type !== "good") return 0;
+
+  const saved = state.habitScores?.[key]?.[habitId];
+  if (Number.isFinite(saved)) return Math.max(0, Math.min(habit.points, saved));
+
+  // Backward compatibility: an old boolean completion means full points.
+  return state.logs[key]?.[habitId] ? habit.points : 0;
+}
 function isDone(habitId, key = dateKey()) {
+  const habit = state.habits.find(item => item.id === habitId);
+  if (habit?.type === "good") return goodHabitScore(habitId, key) > 0;
   return Boolean(state.logs[key]?.[habitId]);
 }
 function queueCloudSave() {
@@ -175,6 +202,8 @@ async function hydrateFromCloud() {
     delete remote.updatedAt;
     remote.notes ||= {};
     remote.handwriting ||= {};
+    remote.tasks ||= [];
+    remote.habitScores ||= {};
     remote.daySettings ||= {};
     remote.snapshots ||= {};
     remote.preferences ||= { range: "week", chartType: "bar" };
@@ -199,6 +228,8 @@ async function hydrateFromCloud() {
     delete remote.updatedAt;
     remote.notes ||= {};
     remote.handwriting ||= {};
+    remote.tasks ||= [];
+    remote.habitScores ||= {};
     remote.daySettings ||= {};
     remote.snapshots ||= {};
     remote.preferences ||= { range: "week", chartType: "bar" };
@@ -236,6 +267,128 @@ function gradeMessage(grade) {
   if (grade > 0) return "Recovery required";
   return "Awaiting input";
 }
+
+function normalizeTasks() {
+  state.tasks ||= [];
+  const today = dateKey();
+
+  // Completed tasks stay visible through the completion day, then are removed.
+  state.tasks = state.tasks.filter(task => !task.completedDate || task.completedDate === today);
+}
+
+function taskAgeDays(task) {
+  const created = atNoon(new Date(task.createdAt || Date.now()));
+  const today = atNoon();
+  return Math.max(0, Math.floor((today - created) / 86400000));
+}
+
+function taskAgeLabel(task) {
+  const age = taskAgeDays(task);
+  if (age === 0) return "Created today";
+  if (age === 1) return "1 day old";
+  return `${age} days old`;
+}
+
+function addTask() {
+  const name = els.taskInput.value.trim();
+  if (!name) return;
+
+  state.tasks.push({
+    id: crypto.randomUUID(),
+    name,
+    createdAt: Date.now(),
+    completedDate: null
+  });
+
+  els.taskInput.value = "";
+  queueCloudSave();
+  renderTasks();
+}
+
+function toggleTask(taskId) {
+  const task = state.tasks.find(item => item.id === taskId);
+  if (!task) return;
+
+  task.completedDate = task.completedDate ? null : dateKey();
+  queueCloudSave();
+  renderTasks();
+}
+
+function deleteTask(taskId) {
+  state.tasks = state.tasks.filter(item => item.id !== taskId);
+  queueCloudSave();
+  renderTasks();
+}
+
+function renderTasks() {
+  normalizeTasks();
+  els.taskList.innerHTML = "";
+
+  const incomplete = state.tasks.filter(task => !task.completedDate);
+  const completed = state.tasks.filter(task => task.completedDate === dateKey());
+
+  els.taskSummary.textContent = `${incomplete.length} open · ${completed.length} completed today`;
+
+  if (!state.tasks.length) {
+    els.taskList.innerHTML = '<div class="empty-state">No tasks yet. Add something you need to finish.</div>';
+    return;
+  }
+
+  [...incomplete, ...completed].forEach(task => {
+    const done = Boolean(task.completedDate);
+    const row = document.createElement("article");
+    row.className = `task-item ${done ? "completed" : ""}`;
+    row.innerHTML = `
+      <button class="task-check" type="button" aria-label="${done ? "Mark incomplete" : "Complete"} ${escapeHtml(task.name)}">
+        ${done ? "✓" : ""}
+      </button>
+      <div class="task-copy">
+        <strong>${escapeHtml(task.name)}</strong>
+        <small>${done ? "Completed today" : taskAgeLabel(task)}</small>
+      </div>
+      <button class="task-delete" type="button" aria-label="Delete ${escapeHtml(task.name)}">×</button>
+    `;
+
+    row.querySelector(".task-check").addEventListener("click", () => toggleTask(task.id));
+    row.querySelector(".task-delete").addEventListener("click", () => deleteTask(task.id));
+    els.taskList.appendChild(row);
+  });
+}
+
+function openHabitScoreDialog(habit) {
+  const current = goodHabitScore(habit.id);
+  els.scoreHabitId.value = habit.id;
+  els.scoreHabitName.textContent = habit.name;
+  els.scoreEarned.max = habit.points;
+  els.scoreEarned.value = current || habit.points;
+  els.scoreMaximum.value = habit.points;
+  els.scoreMaximumLabel.textContent = `/ ${habit.points} possible`;
+  els.clearHabitScoreBtn.classList.toggle("hidden", current <= 0);
+  els.habitScoreDialog.showModal();
+}
+
+function saveGoodHabitScore(habitId, earned) {
+  const habit = state.habits.find(item => item.id === habitId);
+  if (!habit || habit.type !== "good") return;
+
+  const safeScore = Math.max(0, Math.min(habit.points, Math.round(Number(earned) || 0)));
+  state.habitScores ||= {};
+  state.habitScores[dateKey()] ||= {};
+  state.logs[dateKey()] ||= {};
+
+  if (safeScore > 0) {
+    state.habitScores[dateKey()][habitId] = safeScore;
+    state.logs[dateKey()][habitId] = true;
+  } else {
+    delete state.habitScores[dateKey()][habitId];
+    state.logs[dateKey()][habitId] = false;
+  }
+
+  syncSnapshot();
+  queueCloudSave();
+  render();
+}
+
 function toggleHabitCounting(id) {
   const excluded = excludedHabitIds();
   const index = excluded.indexOf(id);
@@ -327,6 +480,14 @@ function longestHabitStreak(habitId) {
   return best;
 }
 function toggleHabit(id) {
+  const habit = state.habits.find(item => item.id === id);
+  if (!habit) return;
+
+  if (habit.type === "good") {
+    openHabitScoreDialog(habit);
+    return;
+  }
+
   const log = logFor();
   log[id] = !log[id];
   syncSnapshot();
@@ -346,6 +507,7 @@ function renderHabits(type, container) {
     const done = isDone(habit.id);
     const counting = habitCountsToday(habit.id);
     const streak = individualHabitStreak(habit.id);
+    const earned = habit.type === "good" ? goodHabitScore(habit.id) : 0;
 
     const row = document.createElement("article");
     row.className = `habit ${habit.type} ${done ? "done" : ""} ${counting ? "" : "paused"}`;
@@ -357,7 +519,11 @@ function renderHabits(type, container) {
         <div class="habit-sub">${counting ? (habit.type === "good" ? "Earn points today" : "Penalty enabled today") : "Saved, but not counting today"}</div>
       </div>
 
-      <span class="habit-score ${habit.type === "good" ? "good-points" : "bad-points"}">${habit.type === "good" ? "+" : "−"}${habit.points}</span>
+      <span class="habit-score ${habit.type === "good" ? "good-points" : "bad-points"}">${
+        habit.type === "good"
+          ? `${earned}/${habit.points}`
+          : `−${habit.points}`
+      }</span>
 
       <div class="habit-meta">
         <span class="streak-chip" title="${habit.type === "good" ? "Consecutive completed days" : "Consecutive days avoided"}">🔥 <strong>${streak}</strong> ${habit.type === "good" ? "day" : "clean day"}${streak === 1 ? "" : "s"}</span>
@@ -372,6 +538,9 @@ function renderHabits(type, container) {
     row.querySelector(".check-button").addEventListener("click", () => {
       if (counting) toggleHabit(habit.id);
     });
+    if (habit.type === "good") {
+      row.querySelector(".habit-score").title = "Tap the check to enter the points you earned today";
+    }
     row.querySelector(".count-control").addEventListener("click", () => toggleHabitCounting(habit.id));
     container.appendChild(row);
   });
@@ -603,13 +772,13 @@ function renderStatistics() {
   let goodPoints = 0;
   let penalties = 0;
 
-  Object.values(state.logs).forEach(log => {
+  Object.entries(state.logs).forEach(([key, log]) => {
     Object.entries(log).forEach(([habitId, completed]) => {
       if (!completed) return;
       const habit = state.habits.find(item => item.id === habitId);
       if (!habit) return;
       completions++;
-      if (habit.type === "good") goodPoints += habit.points;
+      if (habit.type === "good") goodPoints += goodHabitScore(habitId, key);
       else penalties += habit.points;
     });
   });
@@ -700,7 +869,11 @@ function showDayDetails(key, selectedButton) {
         ? completed.map(habit => `
             <div class="day-row">
               <span>${escapeHtml(habit.name)}</span>
-              <strong>${habit.type === "good" ? "+" : "−"}${habit.points}</strong>
+              <strong>${
+                habit.type === "good"
+                  ? `+${goodHabitScore(habit.id, key)}/${habit.points}`
+                  : `−${habit.points}`
+              }</strong>
             </div>`).join("")
         : '<p class="status-copy">No habits recorded for this day.</p>'}
       ${missedGood.length
@@ -755,6 +928,7 @@ function render() {
 
   renderHabits("good", els.goodList);
   renderHabits("bad", els.badList);
+  renderTasks();
   renderHistory();
   renderStatistics();
   renderCalendar();
@@ -1015,6 +1189,26 @@ document.querySelectorAll(".text-button").forEach(button => {
 });
 
 let noteSaveTimer = null;
+
+els.addTaskBtn.addEventListener("click", addTask);
+els.taskInput.addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    addTask();
+  }
+});
+
+els.habitScoreForm.addEventListener("submit", event => {
+  event.preventDefault();
+  saveGoodHabitScore(els.scoreHabitId.value, els.scoreEarned.value);
+  els.habitScoreDialog.close();
+});
+
+els.clearHabitScoreBtn.addEventListener("click", () => {
+  saveGoodHabitScore(els.scoreHabitId.value, 0);
+  els.habitScoreDialog.close();
+});
+
 els.dailyNotes.addEventListener("focus", () => { els.noteStatus.textContent = "Editing"; });
 els.dailyNotes.addEventListener("blur", () => { els.noteStatus.textContent = "Saved"; });
 els.dailyNotes.addEventListener("input", () => {
@@ -1061,7 +1255,12 @@ els.habitForm.addEventListener("submit", event => {
 
   if (id) {
     const habit = state.habits.find(item => item.id === id);
-    if (habit) Object.assign(habit, { name, points, type });
+    if (habit) {
+      Object.assign(habit, { name, points, type });
+      Object.values(state.habitScores || {}).forEach(dayScores => {
+        if (Number.isFinite(dayScores[id])) dayScores[id] = Math.min(points, dayScores[id]);
+      });
+    }
   } else {
     state.habits.push({ id: crypto.randomUUID(), name, points, type, createdAt: Date.now() });
   }
@@ -1076,6 +1275,7 @@ els.deleteHabitBtn.addEventListener("click", () => {
   const id = els.habitId.value;
   state.habits = state.habits.filter(habit => habit.id !== id);
   Object.values(state.logs).forEach(log => delete log[id]);
+  Object.values(state.habitScores || {}).forEach(scores => delete scores[id]);
   syncSnapshot();
   queueCloudSave();
   els.habitDialog.close();
@@ -1085,6 +1285,8 @@ els.deleteHabitBtn.addEventListener("click", () => {
 $("#resetTodayBtn").addEventListener("click", () => {
   if (confirm("Clear all checkoffs for today?")) {
     state.logs[dateKey()] = {};
+    state.habitScores ||= {};
+    state.habitScores[dateKey()] = {};
     syncSnapshot();
     queueCloudSave();
     render();

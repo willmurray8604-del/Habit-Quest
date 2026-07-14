@@ -1,15 +1,18 @@
-# Habit Quest v5.2 — Titanium Grid
+# Habit Quest v7 — To-Do List + Partial Habit Scores
 
-Keeps all current functionality, including:
-- Apple Pencil handwriting notes
-- Typed notes
+New features:
+- Separate to-do list with no points
+- Incomplete tasks remain until finished
+- Completed tasks stay visible for the completion day and disappear the next day
+- Unfinished tasks show how many days old they are
+- Good habits can receive partial daily credit, such as 10/20
+- Bad habits remain binary penalties
+- Existing boolean good-habit history is treated as full credit for compatibility
+
+Unchanged:
+- Existing sign-in behavior
 - Firebase sync
-- Flexible habits
+- Notes and handwriting
+- Flexible COUNTING / PAUSED habits
 - Individual streaks
-- Statistics and calendar
-
-Visual changes:
-- Removed the rotating radar sweep from the grade ring
-- Removed the mouse-following spotlight
-- Added a faint titanium tech grid behind the interface
-- Kept glass blur, reflections, particles, parallax, and micro-animations
+- Charts, statistics, calendar, and Glass OS styling
