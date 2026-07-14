@@ -708,3 +708,385 @@ body::after{
 .bottom-nav{
  backdrop-filter: blur(24px) saturate(140%);
 }
+
+
+/* =========================================================
+   V5 — AGGRESSIVE GLASS OS
+   Neutral titanium lighting; no grade-based ambient color shift.
+   ========================================================= */
+
+:root{
+  --glass-fill: rgba(18,20,23,.54);
+  --glass-fill-strong: rgba(24,27,31,.66);
+  --glass-edge: rgba(255,255,255,.18);
+  --glass-edge-soft: rgba(255,255,255,.08);
+  --glass-shadow: 0 28px 90px rgba(0,0,0,.62);
+  --glass-highlight: rgba(255,255,255,.075);
+}
+
+body{
+  overflow-x:hidden;
+  background:
+    radial-gradient(circle at 50% -10%,rgba(255,255,255,.11),transparent 24%),
+    radial-gradient(circle at 78% 22%,rgba(146,184,224,.06),transparent 25%),
+    radial-gradient(circle at 15% 78%,rgba(255,255,255,.04),transparent 27%),
+    linear-gradient(180deg,#090b0d 0%,#040506 74%);
+  background-attachment:fixed;
+}
+
+/* deeper moving light field */
+body::before{
+  inset:-28%;
+  background:
+    radial-gradient(circle at 24% 22%,rgba(255,255,255,.13),transparent 22%),
+    radial-gradient(circle at 74% 26%,rgba(175,210,245,.075),transparent 23%),
+    radial-gradient(circle at 60% 78%,rgba(255,255,255,.055),transparent 27%),
+    conic-gradient(from 220deg at 50% 50%,transparent 0 30%,rgba(255,255,255,.025) 42%,transparent 58% 100%);
+  filter:blur(20px);
+  animation:ambientShift 120s ease-in-out infinite alternate;
+}
+
+/* subtle glass noise */
+body::after{
+  opacity:.05;
+  background-image:
+    radial-gradient(circle,rgba(255,255,255,.9) .45px,transparent .7px),
+    linear-gradient(135deg,rgba(255,255,255,.02),transparent 45%);
+  background-size:5px 5px,100% 100%;
+}
+
+/* floating particles */
+.app-shell::before,
+.app-shell::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  background-repeat:no-repeat;
+}
+.app-shell::before{
+  background-image:
+    radial-gradient(circle,rgba(255,255,255,.32) 0 1px,transparent 1.5px),
+    radial-gradient(circle,rgba(255,255,255,.20) 0 1px,transparent 1.5px),
+    radial-gradient(circle,rgba(180,210,240,.18) 0 1px,transparent 1.5px),
+    radial-gradient(circle,rgba(255,255,255,.16) 0 1px,transparent 1.5px);
+  background-position:12% 20%,78% 16%,66% 72%,24% 84%;
+  animation:particleDriftA 34s ease-in-out infinite alternate;
+}
+.app-shell::after{
+  background-image:
+    radial-gradient(circle,rgba(255,255,255,.18) 0 1px,transparent 1.5px),
+    radial-gradient(circle,rgba(255,255,255,.12) 0 1px,transparent 1.5px),
+    radial-gradient(circle,rgba(200,225,245,.15) 0 1px,transparent 1.5px);
+  background-position:42% 12%,88% 54%,10% 60%;
+  animation:particleDriftB 46s ease-in-out infinite alternate;
+}
+@keyframes particleDriftA{
+  from{transform:translate3d(0,0,0);}
+  to{transform:translate3d(14px,-18px,0);}
+}
+@keyframes particleDriftB{
+  from{transform:translate3d(0,0,0);}
+  to{transform:translate3d(-12px,16px,0);}
+}
+
+/* true glass cards */
+.panel,
+.habit,
+.bottom-nav,
+dialog,
+.segmented,
+.icon-button{
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.012) 38%,rgba(0,0,0,.12)),
+    var(--glass-fill);
+  border:1px solid var(--glass-edge-soft);
+  backdrop-filter:blur(28px) saturate(145%);
+  -webkit-backdrop-filter:blur(28px) saturate(145%);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 1px 0 rgba(255,255,255,.08),
+    inset 0 -1px 0 rgba(255,255,255,.025);
+}
+
+.panel{
+  isolation:isolate;
+  overflow:hidden;
+}
+
+.panel::before{
+  background:
+    radial-gradient(circle at var(--mx,50%) var(--my,20%),rgba(255,255,255,.10),transparent 34%),
+    linear-gradient(135deg,rgba(255,255,255,.08),transparent 30%);
+  opacity:.8;
+  transition:opacity .25s ease;
+}
+
+.panel::after{
+  content:"";
+  position:absolute;
+  top:-40%;
+  left:-55%;
+  width:42%;
+  height:180%;
+  border-radius:50%;
+  transform:rotate(18deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.13),transparent);
+  filter:blur(8px);
+  opacity:0;
+  pointer-events:none;
+}
+
+.panel:hover::after{
+  animation:glassSweep 1.3s ease;
+}
+@keyframes glassSweep{
+  0%{left:-55%;opacity:0;}
+  18%{opacity:.42;}
+  100%{left:125%;opacity:0;}
+}
+
+/* stronger depth and hover response */
+.panel,
+.habit{
+  transform:translateZ(0);
+  transition:
+    transform .2s cubic-bezier(.2,.8,.2,1),
+    border-color .2s ease,
+    box-shadow .2s ease;
+}
+.panel:hover,
+.habit:hover{
+  transform:translateY(-3px) scale(1.006);
+  border-color:var(--glass-edge);
+  box-shadow:
+    0 34px 110px rgba(0,0,0,.68),
+    inset 0 1px 0 rgba(255,255,255,.11),
+    0 0 0 1px rgba(255,255,255,.025);
+}
+.panel:active,
+.habit:active{
+  transform:translateY(-1px) scale(.997);
+}
+
+/* cursor-light overlay */
+.glass-cursor-light{
+  position:fixed;
+  width:420px;
+  height:420px;
+  margin-left:-210px;
+  margin-top:-210px;
+  border-radius:50%;
+  pointer-events:none;
+  z-index:-2;
+  opacity:.42;
+  background:radial-gradient(circle,rgba(255,255,255,.10),rgba(165,205,240,.035) 30%,transparent 68%);
+  filter:blur(24px);
+  transition:opacity .25s ease;
+}
+
+/* liquid grade ring */
+.reactor-ring{
+  position:relative;
+  isolation:isolate;
+  box-shadow:
+    0 0 60px color-mix(in srgb,var(--grade-color) 24%,transparent),
+    0 0 120px rgba(255,255,255,.06);
+  transition:
+    background .55s cubic-bezier(.2,.85,.2,1),
+    box-shadow .45s ease;
+}
+.reactor-ring::after{
+  content:"";
+  position:absolute;
+  inset:5px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.14);
+  background:
+    conic-gradient(from 20deg,transparent 0 18%,rgba(255,255,255,.14) 22%,transparent 30% 100%);
+  mix-blend-mode:screen;
+  animation:ringOrbit 16s linear infinite;
+  pointer-events:none;
+}
+@keyframes ringOrbit{
+  to{transform:rotate(360deg);}
+}
+.reactor-inner{
+  animation:ringBreathe 5s ease-in-out infinite;
+}
+@keyframes ringBreathe{
+  0%,100%{transform:scale(1);}
+  50%{transform:scale(1.018);}
+}
+
+/* animated glass nav */
+.bottom-nav{
+  background:rgba(12,14,17,.56);
+  border-color:rgba(255,255,255,.16);
+  box-shadow:
+    0 24px 90px rgba(0,0,0,.72),
+    inset 0 1px rgba(255,255,255,.09);
+}
+.nav-button{
+  transition:transform .18s ease,background .18s ease,color .18s ease;
+}
+.nav-button:active{
+  transform:scale(.96);
+}
+
+/* habit micro-interactions */
+.check-button{
+  transition:
+    transform .16s cubic-bezier(.2,.8,.2,1),
+    box-shadow .16s ease,
+    background .16s ease;
+}
+.check-button:active{
+  transform:scale(.86);
+}
+.habit.done .check-button{
+  animation:checkPop .26s cubic-bezier(.2,.9,.3,1.3);
+}
+@keyframes checkPop{
+  0%{transform:scale(.72);}
+  70%{transform:scale(1.12);}
+  100%{transform:scale(1);}
+}
+
+/* chart glass */
+.chart-stage{
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.035),transparent),
+    rgba(3,4,5,.52);
+  backdrop-filter:blur(18px);
+  border-color:rgba(255,255,255,.10);
+}
+
+/* note card glow */
+.daily-log{
+  box-shadow:
+    0 30px 90px rgba(0,0,0,.58),
+    inset 0 1px rgba(255,255,255,.07);
+}
+
+/* aggressive but readable desktop parallax */
+@media(pointer:fine){
+  .dashboard-grid,
+  .habits-section,
+  .analytics-panel,
+  .stats-grid,
+  .calendar-panel{
+    will-change:transform;
+  }
+}
+
+/* respect reduced motion */
+@media(prefers-reduced-motion:reduce){
+  *,
+  *::before,
+  *::after{
+    animation-duration:.001ms!important;
+    animation-iteration-count:1!important;
+    scroll-behavior:auto!important;
+    transition-duration:.001ms!important;
+  }
+  .glass-cursor-light{
+    display:none;
+  }
+}
+
+
+/* =========================================================
+   V5.1 — APPLE PENCIL / HANDWRITING NOTES
+   ========================================================= */
+
+.note-mode-switch{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:5px;
+  padding:4px;
+  margin-bottom:12px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:13px;
+  background:rgba(2,3,4,.38);
+}
+.note-mode-switch button{
+  border:0;
+  border-radius:9px;
+  padding:9px 12px;
+  color:var(--muted);
+  background:transparent;
+  font-weight:900;
+}
+.note-mode-switch button.active{
+  color:#090a0b;
+  background:linear-gradient(180deg,#ffffff,#cfd5da);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.68);
+}
+.note-pane{display:none}
+.note-pane.active{display:block}
+
+.pencil-toolbar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-bottom:10px;
+}
+.tool-button{
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:11px;
+  padding:8px 11px;
+  background:rgba(255,255,255,.035);
+  color:var(--titanium-mid);
+  font-size:.75rem;
+  font-weight:900;
+}
+.tool-button.active{
+  color:#090a0b;
+  background:linear-gradient(180deg,#ffffff,#cfd5da);
+}
+.tool-button.danger-tool{
+  color:#ff7479;
+  border-color:rgba(229,72,77,.22);
+}
+.canvas-frame{
+  position:relative;
+  width:100%;
+  min-height:300px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:16px;
+  background:
+    linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px),
+    rgba(5,6,7,.60);
+  background-size:100% 32px,32px 100%,100% 100%;
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.04),
+    inset 0 0 30px rgba(0,0,0,.26);
+  touch-action:none;
+}
+#handwritingCanvas{
+  display:block;
+  width:100%;
+  height:300px;
+  touch-action:none;
+  cursor:crosshair;
+}
+.canvas-hint{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  color:#5e646a;
+  font-size:.82rem;
+  font-weight:800;
+  pointer-events:none;
+}
+.canvas-frame.has-ink .canvas-hint{display:none}
+
+@media(max-width:560px){
+  .canvas-frame{min-height:360px}
+  #handwritingCanvas{height:360px}
+}

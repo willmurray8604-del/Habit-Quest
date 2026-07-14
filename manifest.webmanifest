@@ -5,7 +5,7 @@
   "display": "standalone",
   "background_color": "#070809",
   "theme_color": "#070809",
-  "description": "A synced matte-black habit tracker with titanium accents, green good habits, and red bad habits.",
+  "description": "A synced Glass OS habit tracker with typed and Apple Pencil handwritten daily notes.",
   "icons": [
     {
       "src": "icon.svg",

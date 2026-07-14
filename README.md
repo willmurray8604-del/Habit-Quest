@@ -1,14 +1,14 @@
-# Habit Quest v4 — Titanium
+# Habit Quest v5.1 — Apple Pencil Notes
 
-Visual redesign only. All content, cloud sync, notes, flexible habits, streak logic, statistics, graphs, and calendar behavior remain unchanged.
+Adds a true handwriting mode to Daily Log:
 
-New color system:
-- Matte-black background
-- Titanium-white primary accent
-- Good habits, checks, points, and streak values are green
-- Bad habits, checks, penalties, and clean-streak values are red
-- Grade ring, charts, and calendar remain grade-colored
-- Neutral controls use titanium rather than red
+- TYPE and WRITE tabs
+- Pressure-sensitive Apple Pencil ink
+- Finger and mouse drawing support
+- Pen and eraser tools
+- Undo and clear
+- Handwriting saved per calendar day
+- Firebase sync with the rest of Habit Quest
+- Typed notes remain unchanged
 
-
-V4.1 adds frosted glass panels, subtle ambient lighting, animated background, film grain and depth.
+The handwriting is stored as compact stroke data instead of screenshots, keeping it editable, scalable, and relatively lightweight.

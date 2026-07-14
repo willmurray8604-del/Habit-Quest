@@ -33,6 +33,7 @@ const defaultState = {
   logs: {},
   snapshots: {},
   notes: {},
+  handwriting: {},
   daySettings: {},
   preferences: { range: "week", chartType: "bar" },
   createdAt: Date.now()
@@ -58,7 +59,12 @@ const els = {
   habitName: $("#habitName"), habitPoints: $("#habitPoints"), dialogTitle: $("#dialogTitle"),
   deleteHabitBtn: $("#deleteHabitBtn"), settingsDialog: $("#settingsDialog"),
   signedInAs: $("#signedInAs"), manageList: $("#manageList"),
-  dailyNotes: $("#dailyNotes"), noteStatus: $("#noteStatus")
+  dailyNotes: $("#dailyNotes"), noteStatus: $("#noteStatus"),
+  typeModeBtn: $("#typeModeBtn"), writeModeBtn: $("#writeModeBtn"),
+  typeNotePane: $("#typeNotePane"), writeNotePane: $("#writeNotePane"),
+  handwritingCanvas: $("#handwritingCanvas"), canvasHint: $("#canvasHint"),
+  penToolBtn: $("#penToolBtn"), eraserToolBtn: $("#eraserToolBtn"),
+  undoStrokeBtn: $("#undoStrokeBtn"), clearDrawingBtn: $("#clearDrawingBtn")
 };
 
 function loadLocal() {
@@ -67,6 +73,7 @@ function loadLocal() {
     if (stored?.habits && stored?.logs) {
       stored.snapshots ||= {};
       stored.notes ||= {};
+      stored.handwriting ||= {};
       stored.daySettings ||= {};
       stored.preferences ||= { range: "week", chartType: "bar" };
       return stored;
@@ -167,6 +174,7 @@ async function hydrateFromCloud() {
     const remote = snapshot.data();
     delete remote.updatedAt;
     remote.notes ||= {};
+    remote.handwriting ||= {};
     remote.daySettings ||= {};
     remote.snapshots ||= {};
     remote.preferences ||= { range: "week", chartType: "bar" };
@@ -190,6 +198,7 @@ async function hydrateFromCloud() {
     const remote = snapshot.data();
     delete remote.updatedAt;
     remote.notes ||= {};
+    remote.handwriting ||= {};
     remote.daySettings ||= {};
     remote.snapshots ||= {};
     remote.preferences ||= { range: "week", chartType: "bar" };
@@ -659,7 +668,7 @@ function renderCalendar() {
     const date = new Date(year, month, day, 12);
     const key = dateKey(date);
     const grade = metricsForDay(key).grade;
-    const hasRecord = Boolean(state.logs[key] || state.snapshots[key] || state.notes?.[key]);
+    const hasRecord = Boolean(state.logs[key] || state.snapshots[key] || state.notes?.[key] || state.handwriting?.[key]?.length);
 
     const button = document.createElement("button");
     const calendarGradeClass = hasRecord ? `recorded-${gradeClass(grade)}` : "no-record";
@@ -678,6 +687,7 @@ function showDayDetails(key, selectedButton) {
   const completed = state.habits.filter(habit => log[habit.id]);
   const missedGood = state.habits.filter(habit => habit.type === "good" && habitCountsToday(habit.id, key) && !log[habit.id]);
   const note = state.notes?.[key] || "";
+  const hasHandwriting = Boolean(state.handwriting?.[key]?.length);
 
   els.dayDetail.innerHTML = `
     <h3>${new Date(`${key}T12:00:00`).toLocaleDateString(undefined, {
@@ -699,7 +709,8 @@ function showDayDetails(key, selectedButton) {
     </div>
     <div class="day-notes">
       <strong>Daily notes</strong>
-      <p>${note ? escapeHtml(note) : "No notes recorded."}</p>
+      <p>${note ? escapeHtml(note) : "No typed notes recorded."}</p>
+      ${hasHandwriting ? '<p style="margin-top:10px;color:#e8ecef"><strong>Handwritten note saved</strong></p>' : ""}
     </div>
   `;
 }
@@ -740,6 +751,7 @@ function render() {
   els.dashboardWeeklyAvg.textContent = `${recordedAverage(7)}%`;
   const todayNote = state.notes?.[dateKey()] || "";
   if (document.activeElement !== els.dailyNotes) els.dailyNotes.value = todayNote;
+  if (noteMode === "write") requestAnimationFrame(() => { resizeDrawingCanvas(); renderDrawing(); });
 
   renderHabits("good", els.goodList);
   renderHabits("bad", els.badList);
@@ -763,6 +775,188 @@ function escapeHtml(value) {
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
   }[character]));
 }
+
+
+let noteMode = "type";
+let drawingTool = "pen";
+let activeStroke = null;
+let drawingSaveTimer = null;
+
+function todayStrokes() {
+  state.handwriting ||= {};
+  state.handwriting[dateKey()] ||= [];
+  return state.handwriting[dateKey()];
+}
+
+function setNoteMode(mode) {
+  noteMode = mode;
+  els.typeModeBtn.classList.toggle("active", mode === "type");
+  els.writeModeBtn.classList.toggle("active", mode === "write");
+  els.typeNotePane.classList.toggle("active", mode === "type");
+  els.writeNotePane.classList.toggle("active", mode === "write");
+
+  if (mode === "write") {
+    requestAnimationFrame(() => {
+      resizeDrawingCanvas();
+      renderDrawing();
+    });
+  }
+}
+
+function setDrawingTool(tool) {
+  drawingTool = tool;
+  els.penToolBtn.classList.toggle("active", tool === "pen");
+  els.eraserToolBtn.classList.toggle("active", tool === "eraser");
+}
+
+function canvasPoint(event) {
+  const rect = els.handwritingCanvas.getBoundingClientRect();
+  return {
+    x: (event.clientX - rect.left) / rect.width,
+    y: (event.clientY - rect.top) / rect.height,
+    pressure: event.pointerType === "pen"
+      ? Math.max(.18, event.pressure || .45)
+      : .5
+  };
+}
+
+function resizeDrawingCanvas() {
+  const canvas = els.handwritingCanvas;
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+
+  const ratio = window.devicePixelRatio || 1;
+  const width = Math.round(rect.width * ratio);
+  const height = Math.round(rect.height * ratio);
+
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+    renderDrawing();
+  }
+}
+
+function drawStroke(ctx, stroke, width, height) {
+  if (!stroke.points?.length) return;
+
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
+  ctx.strokeStyle = "#f4f6f8";
+
+  if (stroke.points.length === 1) {
+    const point = stroke.points[0];
+    ctx.beginPath();
+    ctx.arc(
+      point.x * width,
+      point.y * height,
+      (stroke.tool === "eraser" ? 13 : 1.6 + point.pressure * 2.2),
+      0,
+      Math.PI * 2
+    );
+    ctx.fillStyle = stroke.tool === "eraser" ? "rgba(0,0,0,1)" : "#f4f6f8";
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  for (let i = 1; i < stroke.points.length; i++) {
+    const previous = stroke.points[i - 1];
+    const current = stroke.points[i];
+    const pressure = (previous.pressure + current.pressure) / 2;
+
+    ctx.lineWidth = stroke.tool === "eraser"
+      ? 26
+      : 1.4 + pressure * 4.2;
+
+    ctx.beginPath();
+    ctx.moveTo(previous.x * width, previous.y * height);
+    ctx.lineTo(current.x * width, current.y * height);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function renderDrawing() {
+  const canvas = els.handwritingCanvas;
+  const ctx = canvas.getContext("2d");
+  const ratio = window.devicePixelRatio || 1;
+  const width = canvas.width / ratio;
+  const height = canvas.height / ratio;
+
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+
+  todayStrokes().forEach(stroke => drawStroke(ctx, stroke, width, height));
+  els.canvasHint.parentElement.classList.toggle("has-ink", todayStrokes().length > 0);
+}
+
+function scheduleDrawingSave() {
+  saveLocal();
+  els.noteStatus.textContent = "Saving…";
+  clearTimeout(drawingSaveTimer);
+  drawingSaveTimer = setTimeout(() => {
+    queueCloudSave();
+    els.noteStatus.textContent = "Saved";
+  }, 450);
+}
+
+function beginStroke(event) {
+  if (noteMode !== "write") return;
+  event.preventDefault();
+  els.handwritingCanvas.setPointerCapture?.(event.pointerId);
+
+  activeStroke = {
+    tool: drawingTool,
+    points: [canvasPoint(event)]
+  };
+  todayStrokes().push(activeStroke);
+  renderDrawing();
+}
+
+function continueStroke(event) {
+  if (!activeStroke) return;
+  event.preventDefault();
+
+  const events = event.getCoalescedEvents ? event.getCoalescedEvents() : [event];
+  events.forEach(item => activeStroke.points.push(canvasPoint(item)));
+  renderDrawing();
+}
+
+function endStroke(event) {
+  if (!activeStroke) return;
+  event.preventDefault();
+  activeStroke = null;
+  scheduleDrawingSave();
+}
+
+els.typeModeBtn.addEventListener("click", () => setNoteMode("type"));
+els.writeModeBtn.addEventListener("click", () => setNoteMode("write"));
+els.penToolBtn.addEventListener("click", () => setDrawingTool("pen"));
+els.eraserToolBtn.addEventListener("click", () => setDrawingTool("eraser"));
+
+els.undoStrokeBtn.addEventListener("click", () => {
+  todayStrokes().pop();
+  renderDrawing();
+  scheduleDrawingSave();
+});
+
+els.clearDrawingBtn.addEventListener("click", () => {
+  if (!todayStrokes().length) return;
+  if (!confirm("Clear today's handwritten notes?")) return;
+  state.handwriting[dateKey()] = [];
+  renderDrawing();
+  scheduleDrawingSave();
+});
+
+els.handwritingCanvas.addEventListener("pointerdown", beginStroke);
+els.handwritingCanvas.addEventListener("pointermove", continueStroke);
+els.handwritingCanvas.addEventListener("pointerup", endStroke);
+els.handwritingCanvas.addEventListener("pointercancel", endStroke);
+els.handwritingCanvas.addEventListener("pointerleave", event => {
+  if (event.buttons === 0) endStroke(event);
+});
 
 $("#googleSignInBtn").addEventListener("click", async () => {
   els.authStatus.textContent = "Opening secure sign-in…";
@@ -909,4 +1103,42 @@ $("#nextMonth").addEventListener("click", () => {
 
 window.addEventListener("resize", () => {
   if (state.preferences.chartType === "line") renderHistory();
+  if (noteMode === "write") resizeDrawingCanvas();
 });
+
+
+// V5 Glass OS interactions
+const glassCursor = document.createElement("div");
+glassCursor.className = "glass-cursor-light";
+document.body.appendChild(glassCursor);
+
+if (window.matchMedia("(pointer:fine)").matches) {
+  window.addEventListener("pointermove", event => {
+    glassCursor.style.transform = `translate3d(${event.clientX}px, ${event.clientY}px, 0)`;
+
+    document.querySelectorAll(".panel").forEach(panel => {
+      const rect = panel.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * 100;
+      const y = ((event.clientY - rect.top) / rect.height) * 100;
+      panel.style.setProperty("--mx", `${Math.max(0, Math.min(100, x))}%`);
+      panel.style.setProperty("--my", `${Math.max(0, Math.min(100, y))}%`);
+    });
+  });
+
+  window.addEventListener("scroll", () => {
+    const y = window.scrollY;
+    const groups = [
+      [".dashboard-grid", .010],
+      [".habits-section", .006],
+      [".analytics-panel", .004],
+      [".stats-grid", .008],
+      [".calendar-panel", .006]
+    ];
+
+    groups.forEach(([selector, factor]) => {
+      document.querySelectorAll(selector).forEach(element => {
+        element.style.transform = `translate3d(0, ${Math.min(10, y * factor)}px, 0)`;
+      });
+    });
+  }, { passive: true });
+}
