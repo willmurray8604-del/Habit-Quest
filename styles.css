@@ -886,38 +886,26 @@ dialog,
   transition:opacity .25s ease;
 }
 
-/* liquid grade ring */
+/* cleaner grade ring */
 .reactor-ring{
   position:relative;
   isolation:isolate;
   box-shadow:
-    0 0 60px color-mix(in srgb,var(--grade-color) 24%,transparent),
-    0 0 120px rgba(255,255,255,.06);
+    0 0 48px color-mix(in srgb,var(--grade-color) 20%,transparent),
+    0 0 90px rgba(255,255,255,.045);
   transition:
     background .55s cubic-bezier(.2,.85,.2,1),
     box-shadow .45s ease;
 }
 .reactor-ring::after{
-  content:"";
-  position:absolute;
-  inset:5px;
-  border-radius:50%;
-  border:1px solid rgba(255,255,255,.14);
-  background:
-    conic-gradient(from 20deg,transparent 0 18%,rgba(255,255,255,.14) 22%,transparent 30% 100%);
-  mix-blend-mode:screen;
-  animation:ringOrbit 16s linear infinite;
-  pointer-events:none;
-}
-@keyframes ringOrbit{
-  to{transform:rotate(360deg);}
+  display:none;
 }
 .reactor-inner{
   animation:ringBreathe 5s ease-in-out infinite;
 }
 @keyframes ringBreathe{
   0%,100%{transform:scale(1);}
-  50%{transform:scale(1.018);}
+  50%{transform:scale(1.014);}
 }
 
 /* animated glass nav */
@@ -1089,4 +1077,71 @@ dialog,
 @media(max-width:560px){
   .canvas-frame{min-height:360px}
   #handwritingCanvas{height:360px}
+}
+
+
+/* =========================================================
+   V5.2 — SUBTLE TITANIUM TECH GRID
+   ========================================================= */
+
+body{
+  position:relative;
+}
+
+body > .scanlines{
+  opacity:.10;
+}
+
+body .ambient-one,
+body .ambient-two{
+  opacity:.7;
+}
+
+body::marker{
+  display:none;
+}
+
+.app-shell{
+  position:relative;
+}
+
+.app-shell::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-3;
+  background-image:
+    linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px),
+    linear-gradient(rgba(180,210,240,.010) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(180,210,240,.010) 1px,transparent 1px);
+  background-size:
+    48px 48px,
+    48px 48px,
+    12px 12px,
+    12px 12px;
+  mask-image:
+    radial-gradient(circle at 50% 35%,black 0%,rgba(0,0,0,.85) 48%,transparent 100%);
+  -webkit-mask-image:
+    radial-gradient(circle at 50% 35%,black 0%,rgba(0,0,0,.85) 48%,transparent 100%);
+  opacity:.55;
+}
+
+.app-shell::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-2;
+  background:
+    linear-gradient(180deg,transparent 0%,rgba(255,255,255,.018) 50%,transparent 100%);
+  background-size:100% 240px;
+  animation:gridScan 18s linear infinite;
+  opacity:.24;
+}
+
+@keyframes gridScan{
+  from{background-position:0 -240px;}
+  to{background-position:0 calc(100vh + 240px);}
 }

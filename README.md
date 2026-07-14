@@ -1,14 +1,15 @@
-# Habit Quest v5.1 — Apple Pencil Notes
+# Habit Quest v5.2 — Titanium Grid
 
-Adds a true handwriting mode to Daily Log:
+Keeps all current functionality, including:
+- Apple Pencil handwriting notes
+- Typed notes
+- Firebase sync
+- Flexible habits
+- Individual streaks
+- Statistics and calendar
 
-- TYPE and WRITE tabs
-- Pressure-sensitive Apple Pencil ink
-- Finger and mouse drawing support
-- Pen and eraser tools
-- Undo and clear
-- Handwriting saved per calendar day
-- Firebase sync with the rest of Habit Quest
-- Typed notes remain unchanged
-
-The handwriting is stored as compact stroke data instead of screenshots, keeping it editable, scalable, and relatively lightweight.
+Visual changes:
+- Removed the rotating radar sweep from the grade ring
+- Removed the mouse-following spotlight
+- Added a faint titanium tech grid behind the interface
+- Kept glass blur, reflections, particles, parallax, and micro-animations

@@ -1107,37 +1107,21 @@ window.addEventListener("resize", () => {
 });
 
 
-// V5 Glass OS interactions
-const glassCursor = document.createElement("div");
-glassCursor.className = "glass-cursor-light";
-document.body.appendChild(glassCursor);
-
+// V5.2: retained subtle scroll depth only
 if (window.matchMedia("(pointer:fine)").matches) {
-  window.addEventListener("pointermove", event => {
-    glassCursor.style.transform = `translate3d(${event.clientX}px, ${event.clientY}px, 0)`;
-
-    document.querySelectorAll(".panel").forEach(panel => {
-      const rect = panel.getBoundingClientRect();
-      const x = ((event.clientX - rect.left) / rect.width) * 100;
-      const y = ((event.clientY - rect.top) / rect.height) * 100;
-      panel.style.setProperty("--mx", `${Math.max(0, Math.min(100, x))}%`);
-      panel.style.setProperty("--my", `${Math.max(0, Math.min(100, y))}%`);
-    });
-  });
-
   window.addEventListener("scroll", () => {
     const y = window.scrollY;
     const groups = [
-      [".dashboard-grid", .010],
-      [".habits-section", .006],
-      [".analytics-panel", .004],
-      [".stats-grid", .008],
-      [".calendar-panel", .006]
+      [".dashboard-grid", .006],
+      [".habits-section", .004],
+      [".analytics-panel", .003],
+      [".stats-grid", .005],
+      [".calendar-panel", .004]
     ];
 
     groups.forEach(([selector, factor]) => {
       document.querySelectorAll(selector).forEach(element => {
-        element.style.transform = `translate3d(0, ${Math.min(10, y * factor)}px, 0)`;
+        element.style.transform = `translate3d(0, ${Math.min(7, y * factor)}px, 0)`;
       });
     });
   }, { passive: true });
