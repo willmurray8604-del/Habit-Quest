@@ -1,4 +1,4 @@
-const CACHE = "habit-quest-v7-todos-partial-scores";
+const CACHE = "habit-quest-v7-firebase-hosting-auth-v2";
 const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", event => {
