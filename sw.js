@@ -1,4 +1,4 @@
-const CACHE = "habit-quest-v5-3-handwriting";
+const CACHE = "habit-quest-v5-2-grid";
 const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", event => {
