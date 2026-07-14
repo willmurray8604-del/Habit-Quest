@@ -1,6 +1,15 @@
-# Habit Quest v6.3 — Clean Typed Notes Only
+# Habit Quest v5.2 — Titanium Grid
 
-The handwriting feature is physically removed from HTML, JavaScript, and CSS.
+Keeps all current functionality, including:
+- Apple Pencil handwriting notes
+- Typed notes
+- Firebase sync
+- Flexible habits
+- Individual streaks
+- Statistics and calendar
 
-The Daily Log contains one typed textarea only.
-A version marker appears in Settings: Habit Quest v6.3 · Typed notes only.
+Visual changes:
+- Removed the rotating radar sweep from the grade ring
+- Removed the mouse-following spotlight
+- Added a faint titanium tech grid behind the interface
+- Kept glass blur, reflections, particles, parallax, and micro-animations

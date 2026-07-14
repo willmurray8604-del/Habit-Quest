@@ -108,8 +108,26 @@
           <span id="noteStatus" class="note-status">Saved</span>
         </div>
 
-        <div class="typed-notes-only">
+        <div class="note-mode-switch" role="tablist" aria-label="Note mode">
+          <button id="typeModeBtn" class="active" type="button" role="tab">Type</button>
+          <button id="writeModeBtn" type="button" role="tab">Write</button>
+        </div>
+
+        <div id="typeNotePane" class="note-pane active">
           <textarea id="dailyNotes" maxlength="1500" placeholder="What should you remember about today?"></textarea>
+        </div>
+
+        <div id="writeNotePane" class="note-pane">
+          <div class="pencil-toolbar">
+            <button id="penToolBtn" class="tool-button active" type="button">Pen</button>
+            <button id="eraserToolBtn" class="tool-button" type="button">Eraser</button>
+            <button id="undoStrokeBtn" class="tool-button" type="button">Undo</button>
+            <button id="clearDrawingBtn" class="tool-button danger-tool" type="button">Clear</button>
+          </div>
+          <div class="canvas-frame">
+            <canvas id="handwritingCanvas" aria-label="Handwritten daily notes"></canvas>
+            <div id="canvasHint" class="canvas-hint">Write with Apple Pencil or your finger</div>
+          </div>
         </div>
       </section>
 
@@ -247,7 +265,6 @@
     </div>
     <p id="signedInAs" class="status-copy"></p>
     <button id="signOutBtn" class="secondary-action wide">Sign out</button>
-    <p class="build-version">Habit Quest v6.3 · Typed notes only</p>
     <div class="divider"></div>
     <p class="kicker">MANAGE HABITS</p>
 <p class="settings-help">Habits stay saved permanently. Use the power button beside a habit on the dashboard to decide whether it counts today.</p>
