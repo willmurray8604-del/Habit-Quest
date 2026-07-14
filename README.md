@@ -1,15 +1,18 @@
-# Habit Quest v7 — Firebase Hosting Authentication Fix
+# Habit Quest v7 — To-Do List + Partial Habit Scores
 
-This is the same v7 app with:
-- To-do list
-- Partial good-habit scoring
-- Existing notes, streaks, statistics, calendar, and styling
+New features:
+- Separate to-do list with no points
+- Incomplete tasks remain until finished
+- Completed tasks stay visible for the completion day and disappear the next day
+- Unfinished tasks show how many days old they are
+- Good habits can receive partial daily credit, such as 10/20
+- Bad habits remain binary penalties
+- Existing boolean good-habit history is treated as full credit for compatibility
 
-Authentication change:
-- Firebase `authDomain` now uses `habit-quest-31489.web.app`
-- This matches the Firebase Hosting domain serving the app
-- Service-worker cache bumped so Safari downloads the corrected configuration
-
-Deploy these files from the same folder with:
-
-firebase deploy
+Unchanged:
+- Existing sign-in behavior
+- Firebase sync
+- Notes and handwriting
+- Flexible COUNTING / PAUSED habits
+- Individual streaks
+- Charts, statistics, calendar, and Glass OS styling

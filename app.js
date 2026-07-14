@@ -9,7 +9,7 @@ import {
 
 const firebaseConfig = {
   apiKey: "AIzaSyCDKbVG2J-IRNOsT7XKeRMMStaDGM1HZRc",
-  authDomain: "habit-quest-31489.web.app",
+  authDomain: "habit-quest-31489.firebaseapp.com",
   projectId: "habit-quest-31489",
   storageBucket: "habit-quest-31489.firebasestorage.app",
   messagingSenderId: "725666329057",
