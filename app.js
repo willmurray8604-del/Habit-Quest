@@ -959,38 +959,19 @@ els.handwritingCanvas.addEventListener("pointerleave", event => {
 });
 
 $("#googleSignInBtn").addEventListener("click", async () => {
-  const button = $("#googleSignInBtn");
-  button.disabled = true;
-  button.textContent = "Opening Google…";
-  els.authStatus.textContent = "Complete sign-in in the Google window.";
-
+  els.authStatus.textContent = "Opening secure sign-in…";
   try {
-    // Popup is more reliable than Firebase redirect auth on iPhone Safari
-    // when the app is hosted on GitHub Pages.
-    await signInWithPopup(auth, provider);
+    const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (mobile) await signInWithRedirect(auth, provider);
+    else await signInWithPopup(auth, provider);
   } catch (error) {
     console.error(error);
-
-    if (
-      error?.code === "auth/popup-blocked" ||
-      error?.code === "auth/cancelled-popup-request"
-    ) {
-      els.authStatus.textContent =
-        "Safari blocked the sign-in window. Tap Continue with Google again and allow the popup.";
-    } else if (error?.code === "auth/popup-closed-by-user") {
-      els.authStatus.textContent =
-        "The Google sign-in window was closed before sign-in finished.";
-    } else {
-      els.authStatus.textContent =
-        `Google sign-in failed: ${error?.message || "Please try again."}`;
-    }
-  } finally {
-    button.disabled = false;
-    button.textContent = "Continue with Google";
+    els.authStatus.textContent = error.message;
   }
 });
 
-
+getRedirectResult(auth).catch(error => {
+  console.error(error);
   els.authStatus.textContent = error.message;
 });
 
