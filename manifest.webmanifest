@@ -3,9 +3,9 @@
   "short_name": "Habit Quest",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#020203",
-  "theme_color": "#020203",
-  "description": "A synced habit command center with polished daily notes, flexible habits, and individual streaks.",
+  "background_color": "#070809",
+  "theme_color": "#070809",
+  "description": "A synced matte-black habit tracker with titanium accents, green good habits, and red bad habits.",
   "icons": [
     {
       "src": "icon.svg",

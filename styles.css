@@ -346,3 +346,296 @@ dialog{width:min(520px,calc(100% - 28px));border:1px solid rgba(213,11,24,.28);b
     display: none;
   }
 }
+
+
+/* =========================================================
+   V4 — MATTE BLACK / TITANIUM / GOOD GREEN / BAD RED
+   Visual-only redesign. Functionality remains unchanged.
+   ========================================================= */
+
+:root {
+  --bg: #070809;
+  --panel: #101214;
+  --panel-soft: #14171a;
+  --panel-raised: #191c20;
+  --text: #f4f6f8;
+  --muted: #8d949c;
+  --line: rgba(232,236,240,.11);
+
+  --titanium: #e8ecef;
+  --titanium-bright: #ffffff;
+  --titanium-mid: #bcc3ca;
+  --titanium-dark: #5f666d;
+
+  --green: #32d074;
+  --green-bright: #53e991;
+  --green-dark: #0d6d38;
+
+  --red: #e5484d;
+  --red-hot: #ff5c61;
+  --red-dark: #7d171b;
+
+  --yellow: #f2cc60;
+  --orange: #f59e42;
+  --shadow: 0 22px 80px rgba(0,0,0,.5);
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  background:
+    radial-gradient(circle at 50% -12%, rgba(232,236,240,.08), transparent 29%),
+    linear-gradient(180deg, #0a0b0c 0%, #060708 68%);
+}
+
+.ambient-one {
+  background: rgba(232,236,240,.055);
+}
+.ambient-two {
+  background: rgba(113,122,132,.045);
+}
+.scanlines {
+  opacity: .18;
+}
+
+.kicker {
+  color: var(--titanium-mid);
+}
+.panel {
+  background: linear-gradient(155deg, rgba(24,27,30,.97), rgba(9,10,11,.99));
+  border-color: rgba(232,236,240,.10);
+}
+.panel::before {
+  background: linear-gradient(125deg, rgba(255,255,255,.055), transparent 36%);
+}
+
+/* Authentication */
+.auth-frame {
+  border-color: rgba(232,236,240,.20);
+  background: linear-gradient(160deg, rgba(20,22,24,.99), rgba(7,8,9,.99));
+  box-shadow:
+    0 0 90px rgba(222,228,234,.055),
+    inset 0 0 50px rgba(255,255,255,.018);
+}
+.core-ring {
+  border-color: rgba(245,247,249,.78);
+  box-shadow:
+    0 0 28px rgba(230,235,240,.16),
+    inset 0 0 28px rgba(255,255,255,.06);
+}
+.core-ring::after {
+  border-color: rgba(232,236,240,.25);
+}
+.primary-action {
+  border-color: rgba(255,255,255,.35);
+  color: #090a0b;
+  background: linear-gradient(180deg, #ffffff, #cfd5da);
+  box-shadow:
+    0 12px 30px rgba(0,0,0,.28),
+    inset 0 1px rgba(255,255,255,.9);
+}
+.primary-action:active {
+  background: linear-gradient(180deg, #dfe4e8, #b7bec4);
+}
+.secondary-action {
+  border-color: rgba(232,236,240,.14);
+  background: linear-gradient(180deg, #1b1e21, #111315);
+}
+.delete-action {
+  border-color: rgba(229,72,77,.30);
+  background: rgba(229,72,77,.09);
+  color: #ff7479;
+}
+
+/* Titanium controls */
+.icon-button {
+  border-color: rgba(232,236,240,.13);
+  background: linear-gradient(180deg, #202327, #111315);
+  color: var(--titanium);
+}
+.sync-chip {
+  color: var(--titanium);
+  border-color: rgba(232,236,240,.14);
+  background: rgba(232,236,240,.055);
+}
+.text-button {
+  color: var(--titanium);
+}
+.text-button.danger {
+  color: #ff7378;
+}
+.segmented {
+  background: #0b0c0d;
+  border-color: rgba(232,236,240,.10);
+}
+.segmented button.active {
+  color: #090a0b;
+  background: linear-gradient(180deg, #ffffff, #cfd5da);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.65),
+    0 4px 16px rgba(0,0,0,.24);
+}
+.average-readout {
+  color: var(--titanium);
+}
+
+/* Grade dashboard stays grade-colored */
+.grade-reactor {
+  border-color: rgba(232,236,240,.14);
+}
+.grade-reactor::after {
+  background: rgba(232,236,240,.035);
+}
+.reactor-inner strong {
+  text-shadow: 0 0 22px color-mix(in srgb, var(--grade-color) 34%, transparent);
+}
+.letter-grade {
+  color: var(--titanium-mid);
+}
+
+/* Habit cards */
+.habit {
+  background: linear-gradient(145deg, #17191c, #0c0d0f);
+  border-color: rgba(232,236,240,.09);
+}
+.check-button {
+  background: #1a1d20;
+  border-color: rgba(232,236,240,.12);
+  color: var(--titanium);
+}
+
+/* GOOD HABITS = GREEN, always visibly identified */
+.habit.good {
+  border-left: 3px solid rgba(50,208,116,.52);
+}
+.habit.good .check-button {
+  color: var(--green-bright);
+  border-color: rgba(50,208,116,.28);
+  background: rgba(50,208,116,.055);
+}
+.habit.good.done {
+  border-color: rgba(50,208,116,.32);
+  border-left-color: var(--green);
+}
+.habit.good.done .check-button {
+  color: #04140b;
+  background: linear-gradient(180deg, var(--green-bright), var(--green));
+  border-color: #6af0a2;
+  box-shadow: 0 0 22px rgba(50,208,116,.28);
+}
+.habit-score.good-points {
+  color: var(--green-bright);
+  text-shadow: 0 0 14px rgba(50,208,116,.20);
+}
+
+/* BAD HABITS = RED, always visibly identified */
+.habit.bad {
+  border-left: 3px solid rgba(229,72,77,.48);
+}
+.habit.bad .check-button {
+  color: #ff7479;
+  border-color: rgba(229,72,77,.27);
+  background: rgba(229,72,77,.055);
+}
+.habit.bad.done {
+  border-color: rgba(229,72,77,.36);
+  border-left-color: var(--red);
+}
+.habit.bad.done .check-button {
+  color: #fff;
+  background: linear-gradient(180deg, var(--red-hot), var(--red-dark));
+  border-color: #ff7378;
+  box-shadow: 0 0 22px rgba(229,72,77,.28);
+}
+.habit-score.bad-points {
+  color: #ff7479;
+}
+
+/* Counting control is neutral titanium, because it is not good/bad itself */
+.count-control {
+  color: var(--titanium);
+  border-color: rgba(232,236,240,.16);
+  background: rgba(232,236,240,.055);
+}
+.count-control .power-dot {
+  background: var(--titanium-bright);
+  box-shadow: 0 0 10px rgba(255,255,255,.35);
+}
+.count-control.paused {
+  color: #696f75;
+  border-color: rgba(232,236,240,.08);
+  background: rgba(255,255,255,.018);
+}
+.count-control.paused .power-dot {
+  background: #555b60;
+}
+
+/* Streaks inherit meaning */
+.habit.good .streak-chip strong {
+  color: var(--green-bright);
+}
+.habit.bad .streak-chip strong {
+  color: #ff7479;
+}
+
+/* Daily notes */
+.log-icon {
+  color: var(--titanium-bright);
+  background: linear-gradient(145deg, #272b2f, #111315);
+  border-color: rgba(232,236,240,.15);
+}
+.daily-log textarea:focus {
+  border-color: rgba(232,236,240,.28);
+}
+
+/* Statistics */
+.habit-stat {
+  background: #0d0f10;
+}
+.habit-stat-top span {
+  color: var(--titanium);
+}
+.habit-stat-fill {
+  background: linear-gradient(90deg, #767e86, #f2f5f7);
+  box-shadow: 0 0 18px rgba(232,236,240,.14);
+}
+
+/* Calendar and grade colors remain semantic */
+.calendar-day.selected {
+  outline-color: var(--titanium-bright);
+}
+.day-notes {
+  background: #0b0c0d;
+}
+
+/* Bottom navigation and dialogs */
+.bottom-nav {
+  border-color: rgba(232,236,240,.13);
+  background: rgba(12,14,16,.92);
+}
+.nav-button.active {
+  color: #090a0b;
+  background: linear-gradient(180deg, #ffffff, #cfd5da);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.65),
+    0 5px 18px rgba(0,0,0,.26);
+}
+dialog {
+  border-color: rgba(232,236,240,.18);
+  background: #0d0f10;
+}
+input:focus {
+  border-color: rgba(232,236,240,.38);
+  box-shadow: 0 0 0 3px rgba(232,236,240,.055);
+}
+.manage-item {
+  background: #17191c;
+}
+.manage-item small {
+  color: var(--titanium);
+}
+.reset-button {
+  border-color: rgba(232,236,240,.10);
+}

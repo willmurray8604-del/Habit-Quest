@@ -1,12 +1,11 @@
-# Habit Quest v3.2
+# Habit Quest v4 — Titanium
 
-Corrected and redesigned update:
-- Polished compact Daily Log card
-- Clear COUNTING / PAUSED control on every habit
-- Paused habits remain saved but do not affect today's grade
-- Individual current streak shown cleanly on each habit
-- Best individual streak retained in Statistics
-- Good points are visibly green
-- Grade ring now genuinely changes green/yellow/orange/red
-- Calendar cells are visibly filled with the day's grade color
-- Existing Firebase data and sync remain compatible
+Visual redesign only. All content, cloud sync, notes, flexible habits, streak logic, statistics, graphs, and calendar behavior remain unchanged.
+
+New color system:
+- Matte-black background
+- Titanium-white primary accent
+- Good habits, checks, points, and streak values are green
+- Bad habits, checks, penalties, and clean-streak values are red
+- Grade ring, charts, and calendar remain grade-colored
+- Neutral controls use titanium rather than red

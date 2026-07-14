@@ -240,59 +240,80 @@ function toggleHabitCounting(id) {
   queueCloudSave();
   render();
 }
+function habitTrackingStart(habit) {
+  if (habit?.createdAt) return atNoon(new Date(habit.createdAt));
+
+  const knownDates = [
+    ...Object.keys(state.logs || {}),
+    ...Object.keys(state.snapshots || {}),
+    ...Object.keys(state.daySettings || {})
+  ].sort();
+
+  if (knownDates.length) return atNoon(new Date(`${knownDates[0]}T12:00:00`));
+  if (state.createdAt) return atNoon(new Date(state.createdAt));
+  return atNoon();
+}
 function individualHabitStreak(habitId) {
+  const habit = state.habits.find(item => item.id === habitId);
+  if (!habit) return 0;
+
   let streak = 0;
+  const start = habitTrackingStart(habit);
   const d = atNoon();
-  const todayKey = dateKey(d);
 
-  // An unfinished current day should not erase yesterday's streak.
-  if (!isDone(habitId, todayKey)) d.setDate(d.getDate() - 1);
+  // Good-habit streaks only count completed days. An unfinished current day
+  // does not erase the streak earned through yesterday.
+  if (habit.type === "good" && !isDone(habitId, dateKey(d))) {
+    d.setDate(d.getDate() - 1);
+  }
 
-  for (let i = 0; i < 3650; i++) {
+  for (let i = 0; i < 3650 && d >= start; i++) {
     const key = dateKey(d);
 
+    // Paused days are neutral and do not build or break a streak.
     if (!habitCountsToday(habitId, key)) {
       d.setDate(d.getDate() - 1);
       continue;
     }
 
-    if (isDone(habitId, key)) {
-      streak++;
-      d.setDate(d.getDate() - 1);
-      continue;
-    }
+    const successfulDay = habit.type === "good"
+      ? isDone(habitId, key)
+      : !isDone(habitId, key);
 
-    break;
+    if (!successfulDay) break;
+
+    streak++;
+    d.setDate(d.getDate() - 1);
   }
+
   return streak;
 }
 function longestHabitStreak(habitId) {
-  const keys = Object.keys({ ...state.logs, ...state.daySettings }).sort();
+  const habit = state.habits.find(item => item.id === habitId);
+  if (!habit) return 0;
+
+  const start = habitTrackingStart(habit);
+  const end = atNoon();
   let best = 0;
   let current = 0;
-  let previousActiveDate = null;
 
-  keys.forEach(key => {
-    if (!habitCountsToday(habitId, key)) return;
+  for (let d = atNoon(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const key = dateKey(d);
 
-    const date = new Date(`${key}T12:00:00`);
-    const completed = isDone(habitId, key);
+    // Paused days are neutral: they neither add to nor break the streak.
+    if (!habitCountsToday(habitId, key)) continue;
 
-    if (!completed) {
-      current = 0;
-      previousActiveDate = date;
-      return;
-    }
+    const successfulDay = habit.type === "good"
+      ? isDone(habitId, key)
+      : !isDone(habitId, key);
 
-    if (previousActiveDate) {
-      current = current > 0 ? current + 1 : 1;
+    if (successfulDay) {
+      current++;
+      best = Math.max(best, current);
     } else {
-      current = 1;
+      current = 0;
     }
-
-    best = Math.max(best, current);
-    previousActiveDate = date;
-  });
+  }
 
   return best;
 }
@@ -330,7 +351,7 @@ function renderHabits(type, container) {
       <span class="habit-score ${habit.type === "good" ? "good-points" : "bad-points"}">${habit.type === "good" ? "+" : "−"}${habit.points}</span>
 
       <div class="habit-meta">
-        <span class="streak-chip" title="Current streak for this habit">🔥 <strong>${streak}</strong> day${streak === 1 ? "" : "s"}</span>
+        <span class="streak-chip" title="${habit.type === "good" ? "Consecutive completed days" : "Consecutive days avoided"}">🔥 <strong>${streak}</strong> ${habit.type === "good" ? "day" : "clean day"}${streak === 1 ? "" : "s"}</span>
       </div>
 
       <button class="count-control ${counting ? "" : "paused"}" aria-label="${counting ? "Stop counting this habit today" : "Count this habit today"}">
@@ -610,7 +631,7 @@ function renderStatistics() {
       </div>
       <div class="habit-stat-meta">
         <span>${count} completion${count === 1 ? "" : "s"}</span>
-        <span>Current 🔥 ${individualHabitStreak(habit.id)} · Best ${longestHabitStreak(habit.id)}</span>
+        <span>${habit.type === "bad" ? "Clean" : "Current"} 🔥 ${individualHabitStreak(habit.id)} · Best ${longestHabitStreak(habit.id)}</span>
       </div>
     `;
     els.habitStats.appendChild(card);
@@ -848,7 +869,7 @@ els.habitForm.addEventListener("submit", event => {
     const habit = state.habits.find(item => item.id === id);
     if (habit) Object.assign(habit, { name, points, type });
   } else {
-    state.habits.push({ id: crypto.randomUUID(), name, points, type });
+    state.habits.push({ id: crypto.randomUUID(), name, points, type, createdAt: Date.now() });
   }
 
   syncSnapshot();
