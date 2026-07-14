@@ -1,12 +1,17 @@
-# Habit Quest v6 — Stable Journal
+# Habit Quest v6.2 — Typed Notes Only
 
-Built from the user-provided working Titanium Grid files.
+Removed:
+- Handwriting mode
+- Apple Pencil canvas
+- Pen, eraser, undo, and clear controls
 
-- Firebase authentication code retained
-- Full-screen evening journal
-- Smooth pressure-sensitive Apple Pencil ink
-- Palm/finger rejection while Pencil is active
-- Pen, eraser, undo, redo, and clear
-- Handwriting auto-saves locally and to Firebase
-- Calendar displays the actual handwritten page
-- Existing handwriting stroke data remains compatible
+Kept:
+- Typed daily notes
+- Firebase sync
+- Habits and daily grades
+- Flexible COUNTING / PAUSED habits
+- Good and bad habit streaks
+- Statistics, charts, and calendar
+- Titanium grid and Glass OS styling
+
+Typed notes continue to save locally and sync to Firebase by calendar date.
