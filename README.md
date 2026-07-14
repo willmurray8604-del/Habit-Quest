@@ -1,15 +1,14 @@
-# Habit Quest v5.2 — Titanium Grid
+# Habit Quest v5.3 — Refined Handwriting
 
-Keeps all current functionality, including:
-- Apple Pencil handwriting notes
-- Typed notes
-- Firebase sync
-- Flexible habits
-- Individual streaks
-- Statistics and calendar
-
-Visual changes:
-- Removed the rotating radar sweep from the grade ring
-- Removed the mouse-following spotlight
-- Added a faint titanium tech grid behind the interface
-- Kept glass blur, reflections, particles, parallax, and micro-animations
+Handwriting upgrades:
+- Smooth quadratic ink curves
+- Better pressure-sensitive line width
+- Coalesced Apple Pencil input for lower latency
+- Palm/finger rejection while Pencil is active
+- Cleaner, larger eraser
+- Reduced point jitter
+- Larger writing area
+- Full-screen writing mode with a Done button
+- Calendar days now display the actual handwritten note
+- Existing handwriting data remains compatible
+- Firebase sync and all Habit Quest features remain unchanged
