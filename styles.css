@@ -639,3 +639,72 @@ input:focus {
 .reset-button {
   border-color: rgba(232,236,240,.10);
 }
+
+
+/* ===== V4.1 Glass polish ===== */
+body::before{
+ content:"";
+ position:fixed;
+ inset:-20%;
+ pointer-events:none;
+ z-index:-5;
+ background:
+ radial-gradient(circle at 20% 15%, rgba(255,255,255,.07), transparent 28%),
+ radial-gradient(circle at 82% 18%, rgba(170,210,255,.05), transparent 25%),
+ radial-gradient(circle at 72% 82%, rgba(255,255,255,.035), transparent 32%),
+ radial-gradient(circle at 10% 88%, rgba(140,170,255,.03), transparent 26%);
+ animation:ambientShift 180s ease-in-out infinite alternate;
+}
+body::after{
+ content:"";
+ position:fixed;
+ inset:0;
+ pointer-events:none;
+ z-index:-4;
+ opacity:.035;
+ background-image:
+ radial-gradient(circle, rgba(255,255,255,.8) .5px, transparent .8px);
+ background-size:6px 6px;
+ mix-blend-mode:soft-light;
+}
+@keyframes ambientShift{
+ from{transform:translate3d(-2%,-1%,0) scale(1);}
+ to{transform:translate3d(2%,2%,0) scale(1.08);}
+}
+.panel{
+ backdrop-filter: blur(18px) saturate(125%);
+ -webkit-backdrop-filter: blur(18px) saturate(125%);
+ box-shadow:
+ 0 24px 70px rgba(0,0,0,.55),
+ inset 0 1px rgba(255,255,255,.05);
+}
+.panel::after{
+ content:"";
+ position:absolute;
+ inset:0;
+ border-radius:inherit;
+ pointer-events:none;
+ background:linear-gradient(180deg,rgba(255,255,255,.035),transparent 22%,transparent 78%,rgba(255,255,255,.02));
+}
+.grade-reactor{
+ overflow:hidden;
+}
+.grade-reactor::before{
+ content:"";
+ position:absolute;
+ width:340px;
+ height:340px;
+ left:50%;
+ top:45%;
+ transform:translate(-50%,-50%);
+ border-radius:50%;
+ background:radial-gradient(circle,
+ color-mix(in srgb,var(--grade-color) 18%, white) 0%,
+ transparent 68%);
+ filter:blur(45px);
+ opacity:.65;
+ pointer-events:none;
+}
+.bottom-nav{
+ backdrop-filter: blur(24px) saturate(140%);
+}

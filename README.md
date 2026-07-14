@@ -9,3 +9,6 @@ New color system:
 - Bad habits, checks, penalties, and clean-streak values are red
 - Grade ring, charts, and calendar remain grade-colored
 - Neutral controls use titanium rather than red
+
+
+V4.1 adds frosted glass panels, subtle ambient lighting, animated background, film grain and depth.
